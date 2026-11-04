@@ -1,0 +1,193 @@
+"""Per-user, windowless logon supervisor. Does not launch or patch NetEase."""
+import argparse
+import ctypes
+import json
+import logging
+import locale
+from logging.handlers import RotatingFileHandler
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import threading
+import time
+
+RUN_KEY = r'Software\Microsoft\Windows\CurrentVersion\Run'
+RUN_NAME = 'FoloToyPassportMusic'
+LAUNCHER = 'PassportMusicBackground.exe'
+BRIDGE = 'PassportMusic.exe'
+
+def decode_bridge_line(line, fallback=None):
+    try: return line.decode('utf-8')
+    except UnicodeDecodeError: return line.decode(fallback or locale.getencoding(), errors='replace')
+
+def run_command(root):
+    path = str(Path(root) / LAUNCHER)
+    if '"' in path: raise ValueError('Invalid executable path')
+    command = '"' + path + '" --background'
+    if len(command) > 260: raise ValueError('Windows logon command exceeds 260 characters')
+    return command
+
+def install_root():
+    command = registered()
+    if isinstance(command, str) and command.startswith('"') and command.endswith('" --background'):
+        candidate = Path(command[1:-len('" --background')])
+        if candidate.is_absolute() and candidate.name == LAUNCHER:
+            return candidate.parent
+    return Path(os.environ['LOCALAPPDATA']) / 'FoloToy' / 'PassportMusic'
+
+def own_root():
+    return Path(sys.executable).resolve().parent if getattr(sys, 'frozen', False) else Path(__file__).resolve().parent
+
+def registered():
+    import winreg
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as key:
+            return winreg.QueryValueEx(key, RUN_NAME)[0]
+    except FileNotFoundError: return None
+
+def set_autostart(root, enabled):
+    import winreg
+    expected = run_command(root)
+    previous = registered()
+    if previous not in (None, expected):
+        raise RuntimeError('A different Passport autostart entry exists; it was preserved')
+    with winreg.CreateKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as key:
+        if enabled: winreg.SetValueEx(key, RUN_NAME, 0, winreg.REG_SZ, expected)
+        elif previous is not None: winreg.DeleteValue(key, RUN_NAME)
+
+def owned_process(pid, executable, background=False):
+    import psutil
+    try:
+        process = psutil.Process(pid)
+        if Path(process.exe()).resolve() != Path(executable).resolve(): return None
+        if process.username() != psutil.Process().username(): return None
+        if background and '--background' not in process.cmdline(): return None
+        return process
+    except (psutil.Error, OSError, ValueError): return None
+
+def stop(root):
+    # PIDs are checked against path and user before termination. Stop supervisor
+    # before child to prevent a restart; never stop a different application.
+    record = root / 'background-state.json'
+    try: state = json.loads(record.read_text(encoding='utf-8'))
+    except (OSError, ValueError): return
+    for field, executable in (('supervisor', root / LAUNCHER), ('bridge', root / BRIDGE)):
+        pid = state.get(field)
+        if type(pid) is not int or pid == os.getpid(): continue
+        process = owned_process(pid, executable, field == 'supervisor')
+        if process:
+            parent = owned_process(process.ppid(), executable, True) if field == 'supervisor' else None
+            process.terminate(); process.wait(timeout=5)
+            if parent: parent.wait(timeout=5)
+
+def spawn(root):
+    return subprocess.Popen([str(root / LAUNCHER), '--background'], cwd=root,
+        creationflags=subprocess.CREATE_NO_WINDOW)
+
+def install(source, start=True, destination=None):
+    destination = Path(destination).resolve() if destination is not None else install_root()
+    for name in (BRIDGE, LAUNCHER, '_internal'):
+        if not (source / name).exists(): raise RuntimeError('Incomplete runtime: missing ' + name)
+    # Check registry ownership before stopping/copying any installed files.
+    previous = registered()
+    if previous not in (None, run_command(destination)):
+        raise RuntimeError('A different Passport autostart entry exists; it was preserved')
+    stop(destination)
+    if source.resolve() != destination.resolve():
+        shutil.copytree(source, destination, dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns('logs', '*-state.json', '*.pid'))
+    set_autostart(destination, True)
+    if start: spawn(destination)
+    return destination
+
+def setup_logger(root):
+    logs = root / 'logs'; logs.mkdir(exist_ok=True)
+    logger = logging.getLogger('passport.background')
+    logger.setLevel(logging.INFO)
+    handler = RotatingFileHandler(logs / 'background.log', maxBytes=2_097_152,
+        backupCount=1, encoding='utf-8')
+    handler.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
+    logger.addHandler(handler)
+    return logger
+
+def supervise(root):
+    api = ctypes.WinDLL('kernel32', use_last_error=True)
+    api.CreateMutexW.argtypes = [ctypes.c_void_p, ctypes.c_bool, ctypes.c_wchar_p]
+    api.CreateMutexW.restype = ctypes.c_void_p
+    api.CloseHandle.argtypes = [ctypes.c_void_p]
+    api.CloseHandle.restype = ctypes.c_bool
+    handle = api.CreateMutexW(None, False, r'Local\FoloToy.PassportMusic.Background')
+    if not handle: raise ctypes.WinError(ctypes.get_last_error())
+    if ctypes.get_last_error() == 183:
+        api.CloseHandle(handle); return
+    logger = setup_logger(root)
+    state_path = root / 'background-state.json'
+    try:
+        delay = 5
+        while True:
+            env = dict(os.environ, PYTHONIOENCODING='utf-8')
+            # No --launch-player. It may connect before or after NetEase opens.
+            child = subprocess.Popen([str(root / BRIDGE)], cwd=root, env=env,
+                creationflags=subprocess.CREATE_NO_WINDOW, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT)
+            state_path.write_text(json.dumps(dict(supervisor=os.getpid(), bridge=child.pid))+'\n', encoding='utf-8')
+            logger.info('Background bridge started; NetEase auto-launch disabled')
+            def capture(stream):
+                for line in stream:
+                    logger.info('%s', decode_bridge_line(line).rstrip())
+            reader = threading.Thread(target=capture, args=(child.stdout,), daemon=True)
+            reader.start()
+            started = time.monotonic()
+            code = child.wait(); reader.join(timeout=2); child.stdout.close()
+            if time.monotonic()-started > 60: delay = 5
+            logger.info('Bridge exited (%s); retry in %s seconds', code, delay)
+            time.sleep(delay); delay = min(60, delay*2)
+    finally:
+        api.CloseHandle(handle)
+
+def notify(message, error=False):
+    ctypes.windll.user32.MessageBoxW(None, message, 'Passport Music', 0x10 if error else 0x40)
+
+def main():
+    parser = argparse.ArgumentParser()
+    actions = parser.add_mutually_exclusive_group(required=True)
+    for action in ('background', 'install', 'disable', 'stop', 'status'):
+        actions.add_argument('--'+action, action='store_true')
+    parser.add_argument('--quiet', action='store_true')
+    parser.add_argument('--no-start', action='store_true')
+    parser.add_argument('--install-dir', type=Path)
+    args = parser.parse_args()
+    try:
+        if args.background: supervise(own_root()); return
+        if args.install:
+            root = install(own_root(), not args.no_start, args.install_dir)
+            message = '已设置登录后后台启动。直接打开网易云即可，桥接不会自动打开网易云。\n安装目录：'+str(root)
+        elif args.disable:
+            root = install_root(); set_autostart(root, False); stop(root)
+            message = '已取消开机自启并停止后台桥接。文件、配对与歌词微调值保留。'
+        elif args.stop:
+            stop(install_root()); message = '后台桥接已停止；下次登录仍会自动启动。'
+        else:
+            root = install_root()
+            enabled = registered() == run_command(root)
+            try: state = json.loads((root / 'background-state.json').read_text())
+            except (OSError, ValueError): state = {}
+            running = bool(owned_process(state.get('supervisor'), root / LAUNCHER, True)) if type(state.get('supervisor')) is int else False
+            message = '登录自启：'+('已启用' if enabled else '未启用')+'\n后台进程：'+('运行中' if running else '未运行')+'\n日志目录：'+str(root / 'logs')
+            try:
+                result = subprocess.run([str(root / BRIDGE), '--diagnose'], cwd=root,
+                    creationflags=subprocess.CREATE_NO_WINDOW, capture_output=True,
+                    text=True, encoding='utf-8', errors='replace', timeout=8,
+                    env=dict(os.environ, PYTHONIOENCODING='utf-8'))
+                status = json.loads(result.stdout.strip().splitlines()[-1])
+                message += '\n网易云内部接口：'+('已连接' if status.get('internal_player') else '未连接，请打开网易云或检查快捷方式参数')
+            except (OSError, ValueError, IndexError, subprocess.TimeoutExpired):
+                message += '\n网易云接口检查未完成，请查看日志。'
+        if not args.quiet: notify(message)
+    except Exception as exc:
+        if not args.quiet: notify('操作失败：'+str(exc), True)
+        raise SystemExit(1)
+
+if __name__ == '__main__': main()

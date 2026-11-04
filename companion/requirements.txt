@@ -1,0 +1,8 @@
+bleak==2.1.1
+pyserial==3.5
+comtypes==1.4.17
+psutil==7.2.2
+websockets==17.4
+winrt-Windows.Media.Control==4!10.0.28000.2957
+winrt-Windows.Foundation==4!10.0.28000.2957
+winrt-Windows.Foundation.Collections==4!10.0.28000.2957
