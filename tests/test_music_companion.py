@@ -128,6 +128,61 @@ class ProtocolTest(unittest.TestCase):
         self.assertEqual(len(state['lyric'].encode()),384)
 
 class LyricsTest(unittest.TestCase):
+    def test_windows_direct_uses_ipv4_without_native_ipv6_or_stale_proxy(self):
+        from unittest.mock import Mock
+        completed=Mock(returncode=0,stdout=b'{"lrc":{"lyric":"[00:01]test"}}')
+        with patch.object(sys,'platform','win32'),patch('music_core.subprocess.run',return_value=completed) as run,patch('music_core.getproxies') as proxies,patch.dict('os.environ',{'SystemRoot':r'C:\Windows'}):
+            self.assertEqual(http_json('https://music.163.com/test')['lrc']['lyric'],'[00:01]test')
+        args=run.call_args.args[0]
+        self.assertEqual(Path(args[0]).name,'curl.exe')
+        self.assertTrue(Path(args[0]).is_absolute() or args[0].startswith('C:\\'))
+        self.assertEqual(args[1],'--disable')
+        self.assertIn('--ipv4',args)
+        self.assertEqual(args[args.index('--proxy')+1],'')
+        self.assertEqual(args[args.index('--noproxy')+1],'*')
+        self.assertEqual(args[args.index('--proto')+1],'=https')
+        self.assertEqual(args[args.index('--max-filesize')+1],'2000000')
+        self.assertNotIn('--insecure',args)
+        self.assertFalse(run.call_args.kwargs.get('shell',False))
+        self.assertEqual(run.call_args.kwargs['timeout'],8)
+        proxies.assert_not_called()
+
+    def test_ipv4_search_sends_payload_on_stdin(self):
+        from unittest.mock import Mock
+        from music_core import _http_json_ipv4
+        payload=b's=Test&type=1'
+        with patch('music_core.subprocess.run',return_value=Mock(returncode=0,stdout=b'{}')) as run:
+            self.assertEqual(_http_json_ipv4('https://music.163.com/api/search/get',payload),{})
+        args=run.call_args.args[0]
+        self.assertEqual(args[args.index('--data-binary')+1],'@-')
+        self.assertEqual(run.call_args.kwargs['input'],payload)
+        self.assertNotIn(payload.decode(),args)
+
+    def test_ipv4_exit_timeout_and_bad_responses_are_retryable(self):
+        import subprocess
+        from unittest.mock import Mock
+        from music_core import _http_json_ipv4
+        for code in (6,22,28,35,60,63):
+            with patch('music_core.subprocess.run',return_value=Mock(returncode=code,stdout=b'')):
+                with self.assertRaisesRegex(OSError,f'curl exit {code}'):
+                    _http_json_ipv4('https://music.163.com/test')
+        with patch('music_core.subprocess.run',side_effect=subprocess.TimeoutExpired('curl',8)):
+            with self.assertRaisesRegex(OSError,'timed out'):_http_json_ipv4('https://music.163.com/test')
+        for raw in (b'x'*2_000_001,b'not JSON'):
+            with patch('music_core.subprocess.run',return_value=Mock(returncode=0,stdout=raw)):
+                with self.assertRaises(ValueError):_http_json_ipv4('https://music.163.com/test')
+
+    def test_ipv4_failure_uses_current_proxy_without_retrying_ipv6(self):
+        from unittest.mock import MagicMock
+        import types
+        native=types.SimpleNamespace(COMError=type('NativeError',(Exception,),{}),CoInitialize=MagicMock(),CoUninitialize=MagicMock())
+        request=MagicMock();request.Status=200;request.ResponseText='{}'
+        client=types.SimpleNamespace(CreateObject=MagicMock(return_value=request))
+        with patch.object(sys,'platform','win32'),patch('music_core._http_json_ipv4',side_effect=OSError('IPv4 timeout')) as ipv4,patch('music_core.getproxies',return_value={'https':'http://127.0.0.1:8888'}),patch('music_core.proxy_bypass',return_value=False),patch.dict(sys.modules,{'comtypes':native,'comtypes.client':client}):
+            self.assertEqual(http_json('https://music.163.com/test'),{})
+        ipv4.assert_called_once()
+        request.SetProxy.assert_called_once_with(2,'127.0.0.1:8888')
+
     def test_native_http_direct_ignores_stale_proxy_and_machine_defaults(self):
         import types
         from unittest.mock import MagicMock
@@ -136,7 +191,7 @@ class LyricsTest(unittest.TestCase):
         client=types.SimpleNamespace(CreateObject=MagicMock(return_value=request))
         for proxies in ({},{'https':'http://127.0.0.1:8888'}, {'https':'socks5://127.0.0.1:8888'}):
             request.reset_mock()
-            with patch.dict(sys.modules,{'comtypes':native,'comtypes.client':client}),patch.object(sys,'platform','win32'),patch('music_core.getproxies',return_value=proxies) as lookup:
+            with patch('music_core._http_json_ipv4',side_effect=FileNotFoundError),patch.dict(sys.modules,{'comtypes':native,'comtypes.client':client}),patch.object(sys,'platform','win32'),patch('music_core.getproxies',return_value=proxies) as lookup:
                 self.assertEqual(http_json('https://music.163.com/test'),{})
             request.SetProxy.assert_called_once_with(1)
             lookup.assert_not_called()
@@ -149,7 +204,7 @@ class LyricsTest(unittest.TestCase):
         direct=MagicMock();direct.Send.side_effect=NativeError('direct unavailable')
         proxied=MagicMock();proxied.Status=200;proxied.ResponseText='{"code":200}'
         client=types.SimpleNamespace(CreateObject=MagicMock(side_effect=[direct,proxied,direct]))
-        with patch.dict(sys.modules,{'comtypes':native,'comtypes.client':client}),patch.object(sys,'platform','win32'),patch('music_core.getproxies',side_effect=[{'https':'http://user:pass@127.0.0.1:8888'},{}]) as lookup,patch('music_core.proxy_bypass',return_value=False):
+        with patch('music_core._http_json_ipv4',side_effect=FileNotFoundError),patch.dict(sys.modules,{'comtypes':native,'comtypes.client':client}),patch.object(sys,'platform','win32'),patch('music_core.getproxies',side_effect=[{'https':'http://user:pass@127.0.0.1:8888'},{}]) as lookup,patch('music_core.proxy_bypass',return_value=False):
             payload=b's=Test&type=1'
             self.assertEqual(http_json('https://music.163.com/api/search/get',payload),{'code':200})
             # A later failure with proxy disabled must not reuse the old route.
@@ -185,7 +240,7 @@ class LyricsTest(unittest.TestCase):
         class NativeError(Exception):pass
         native=types.SimpleNamespace(COMError=NativeError,CoInitialize=MagicMock(),CoUninitialize=MagicMock())
         client=types.SimpleNamespace(CreateObject=MagicMock(side_effect=NativeError('timeout')))
-        with patch.dict(sys.modules,{'comtypes':native,'comtypes.client':client}),patch.object(sys,'platform','win32'),patch('music_core.getproxies',return_value={}):
+        with patch('music_core._http_json_ipv4',side_effect=FileNotFoundError),patch.dict(sys.modules,{'comtypes':native,'comtypes.client':client}),patch.object(sys,'platform','win32'),patch('music_core.getproxies',return_value={}):
             with self.assertRaises(OSError):http_json('https://music.163.com/test')
         native.CoUninitialize.assert_called_once()
 

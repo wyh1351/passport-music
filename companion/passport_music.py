@@ -150,6 +150,7 @@ class Bridge:
         if self.key == key:
             self.lyrics=lines; self.message=message
             if lines:
+                logging.getLogger(__name__).info('Timed lyrics ready: %d lines',len(lines))
                 self.lyric_cache[key]=(lines,message)
                 self.lyric_cache.move_to_end(key)
                 while len(self.lyric_cache)>16:self.lyric_cache.popitem(last=False)

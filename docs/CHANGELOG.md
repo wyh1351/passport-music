@@ -10,12 +10,19 @@
 > with `CHANGELOG.zh_CN.md`. The entries currently under `Unreleased` are pending
 > review for the next release; they are not a finalized release history.
 
+## Passport Music v1.0.1 (2026-11-05)
+
+- Fix Windows lyric requests timing out on an unreachable IPv6 endpoint by preferring IPv4 direct access, then fresh proxy fallback on failure.
+- Update the Windows companion. Exiting FlClash and changing songs passed device lyric-display and synchronization checks on the author's current network. All 61 PC tests and the complete project gate passed.
+- Clarify that the 98%-to-100% battery display calibration was chosen for the author's single device. It is neither evidence of the same issue on other devices nor a general charging fix. The retained firmware includes this mapping and may misreport other units; charging control is unchanged.
+- Retain v13 firmware and its matching debug files. Existing v13 users only need the PC companion update.
+
 ## Passport Music v1.0.0 (2026-11-05)
 
 - First public release of the three-button NetEase Cloud Music remote for Windows.
 - Includes song information, progress, three-line synchronized lyrics, internal volume steps of5/20 points, track controls and desktop-lyrics toggle.
 - Adds saved lyric timing, brightness and screen timeout, authenticated Bluetooth pairing/reconnection and a hidden logon bridge.
-- Uses the accepted v13 firmware with full-display battery reference98%; PC lyrics prefer direct access with fresh proxy fallback.
+- Uses accepted v13 firmware with a raw98% full-display reference chosen for the author's single device, not a general defect claim; PC lyrics prefer direct access with fresh proxy fallback.
 - Build and57 PC regressions/C/BSP checks passed. User accepted app-upgrade features and song changes with FlClash disconnected. Full0x0 flashing, real relogin and endurance remain unverified.
 - Verified local release binaries and matching symbols are retained; CI builds are manual to avoid overwriting release assets.
 

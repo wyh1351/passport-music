@@ -4,6 +4,8 @@ import json
 import re
 import unicodedata
 import logging
+import os
+import subprocess
 import sys
 from pathlib import Path
 from urllib.parse import urlencode, urlsplit, unquote
@@ -112,6 +114,11 @@ def http_json(url, data=None):
 
 def _http_json_once(url, data=None, proxy=None):
     if sys.platform == 'win32':
+        if proxy is None:
+            try:
+                return _http_json_ipv4(url, data)
+            except FileNotFoundError:
+                logging.getLogger(__name__).info('System curl unavailable; using native lyric transport')
         # Native WinHTTP uses Windows certificate validation and works in the
         # packaged EXE without Python OpenSSL configuration/provider files.
         import comtypes
@@ -149,7 +156,8 @@ def _http_json_once(url, data=None, proxy=None):
         except comtypes.COMError as exc:
             # COM transport errors aren't OSError; normalize so the bridge's
             # transient failure/retry policy also covers native request timeouts.
-            raise OSError('Windows lyric request failed') from exc
+            code=getattr(exc,'hresult',0)&0xffffffff
+            raise OSError(f'Windows lyric request failed (HRESULT 0x{code:08X})') from exc
         finally:
             if initialized: comtypes.CoUninitialize()
     req = Request(url, data=data, headers={"User-Agent": "Mozilla/5.0", "Referer": "https://music.163.com/"})
@@ -159,6 +167,31 @@ def _http_json_once(url, data=None, proxy=None):
         raw = response.read(2_000_001)
     if len(raw) > 2_000_000: raise ValueError("oversized lyric response")
     return json.loads(raw)
+
+def _http_json_ipv4(url, data=None):
+    """Windows' system curl uses native TLS trust and an app-local IPv4 route."""
+    executable=Path(os.environ.get('SystemRoot',r'C:\Windows'))/'System32'/'curl.exe'
+    args=[str(executable),'--disable','--ipv4','--noproxy','*','--proxy','',
+          '--proto','=https','--silent','--fail','--connect-timeout','3',
+          '--max-time','6','--max-filesize','2000000',
+          '--user-agent','Mozilla/5.0','--referer','https://music.163.com/']
+    if data is not None:
+        args+=['--header','Content-Type: application/x-www-form-urlencoded; charset=UTF-8',
+               '--data-binary','@-']
+    args+=['--url',url]
+    try:
+        result=subprocess.run(args,input=data,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,
+            timeout=8,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+    except subprocess.TimeoutExpired as exc:
+        raise OSError('IPv4 lyric request timed out') from exc
+    if result.returncode:
+        raise OSError(f'IPv4 lyric request failed (curl exit {result.returncode})')
+    if len(result.stdout)>2_000_000:
+        raise ValueError('oversized lyric response')
+    response=json.loads(result.stdout)
+    logging.getLogger(__name__).info('IPv4 lyric response received (%d bytes)',len(result.stdout))
+    return response
+
 
 def matching_songs(songs, title, artist, duration, album=""):
     """Exact title/artist; album and duration narrow the recording when available."""
