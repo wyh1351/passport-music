@@ -46,6 +46,7 @@ static void save_preferences(int64_t now) {
     esp_err_t err=nvs_set_i32(settings_nvs,"offset_ms",state.lyric_offset_ms);
     if (err==ESP_OK) err=nvs_set_i32(settings_nvs,"brightness",state.brightness);
     if (err==ESP_OK) err=nvs_set_i32(settings_nvs,"screen_secs",state.screen_seconds);
+    if (err==ESP_OK) err=nvs_set_i32(settings_nvs,"pet",state.pet);
     if (err==ESP_OK) err=nvs_commit(settings_nvs);
     state.save_status=err==ESP_OK?MUSIC_SAVE_OK:MUSIC_SAVE_ERROR;
     settings_dirty=err!=ESP_OK;
@@ -92,10 +93,7 @@ static bool read_state(const char *line) {
         if (valid) {
             next.playing = cJSON_IsTrue(playing); next.available = cJSON_IsTrue(available);
             next.connected = true;
-            next.settings_page=state.settings_page; next.lyric_offset_ms=state.lyric_offset_ms;
-            next.settings_edit=state.settings_edit; next.setting=state.setting;
-            next.brightness=state.brightness; next.screen_seconds=state.screen_seconds;
-            next.save_status=state.save_status;
+            music_preferences_copy(&next,&state);
             const cJSON *ack=cJSON_GetObjectItemCaseSensitive(root,"lyric_offset_ack");
             if (cJSON_IsNumber(ack) && ack->valuedouble==ack->valueint && music_offset_valid(ack->valueint)) {
                 next.offset_supported=true; next.offset_ack=ack->valueint;
@@ -202,6 +200,7 @@ void app_main(void) {
         if (settings_store_ready && nvs_get_i32(settings_nvs,"offset_ms",&value)==ESP_OK && music_offset_valid(value)) state.lyric_offset_ms=value;
         if (settings_store_ready && nvs_get_i32(settings_nvs,"brightness",&value)==ESP_OK && music_brightness_valid(value)) state.brightness=value;
         if (settings_store_ready && nvs_get_i32(settings_nvs,"screen_secs",&value)==ESP_OK && music_screen_seconds_valid(value)) state.screen_seconds=value;
+        if (settings_store_ready && nvs_get_i32(settings_nvs,"pet",&value)==ESP_OK && music_pet_valid(value)) state.pet=(music_pet_t)value;
         if (!settings_store_ready) state.save_status=MUSIC_SAVE_ERROR;
         ble_ready=music_ble_start()==ESP_OK;
     } else state.save_status=MUSIC_SAVE_ERROR;

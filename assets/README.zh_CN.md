@@ -66,3 +66,23 @@ BSP 在 `components/bsp/src/bsp_battery.c` 中嵌入这 80 字节，主机检查
 ## Passport Music 封面
 
 `images/passport-music-cover.png` 为本次发布生成的 AI 玩法示意图，不是设备照片或真机截图。使用内置图像生成工具制作，未包含第三方照片或歌曲歌词。
+
+## A1 界面素材
+
+原创逐像素耳机猫：`images/music-cat-play.svg`、`images/music-cat-rest.svg`，
+采用仓库 MIT 许可。运行 `python tools/generate_music_cat.py`（Pillow13.0.0）
+生成 `images/music_cat.c` 两张40x40 RGB565 帧。
+运行 `python tools/generate_music_font.py --size 20` 生成20px 字体
+`fonts/music_font_20.c` 与清单 `fonts/music_font_20_inventory.json`。
+字体沿用原 SC/KR 来源及 OFL 许可，覆盖范围与16px完全一致；门禁校验两种尺寸哈希。
+
+## 新增原创宠物
+
+`images/music-dog-*.svg`、`images/music-rabbit-*.svg`、`images/music-penguin-*.svg`
+是原创整数网格素材，采用仓库 MIT 许可。现有 `generate_music_cat.py` 将四种动物
+播放/休息帧统一生成到 `images/music_cat.c`，八张40x40 RGB565，共25600字节。
+全部共用同一姿态函数和位置。
+
+## 发布界面图片
+
+`../docs/images/passport-music-*.png` 使用本应用原生界面渲染和原创像素宠物排版。歌名、歌词为演示内容，不是实时歌曲或设备照片。设置底部刻意留白，未经作者明确同意，不新增底部提示或状态文字。

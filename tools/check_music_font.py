@@ -9,7 +9,8 @@ inv=json.loads((ROOT/'assets/fonts/music_font_inventory.json').read_text())
 source=ROOT/'assets/fonts/music_font_16.c'
 assert hashlib.sha256(source.read_bytes()).hexdigest()==inv['generated_sha256']
 points=set(inv['codepoints'])
-for literal in re.findall(r'"([^"\n]*)"',(ROOT/'main/music_ui.c').read_text(encoding='utf-8')):
+ui_copy='\n'.join((ROOT/name).read_text(encoding='utf-8') for name in ('main/music_ui.c','main/music_settings.c'))
+for literal in re.findall(r'"([^"\n]*)"',ui_copy):
     for char in literal:
         if ord(char)>127: assert ord(char) in points,(char,hex(ord(char)))
 assert set(range(0x4e00,0x9ff0))<=points
@@ -32,3 +33,13 @@ coverage=(ROOT/'assets/fonts/music_font_coverage.h').read_text()
 missing_data=re.search(r'uint16_t missing\[\] = \{(.*?)\};',coverage,re.S)[1]
 assert [int(x) for x in re.findall(r'\d+',missing_data)]==inv['missing']
 print(f'Font coverage: PASS ({len(points)} glyphs, 2bpp, Chinese/Latin + Japanese kana + modern Korean)')
+large_inv=json.loads((ROOT/'assets/fonts/music_font_20_inventory.json').read_text())
+large=ROOT/'assets/fonts/music_font_20.c'
+assert large_inv['size']==20 and large_inv['codepoints']==inv['codepoints']
+assert large_inv['missing']==inv['missing']
+assert hashlib.sha256(large.read_bytes()).hexdigest()==large_inv['generated_sha256']
+large_text=large.read_text(encoding='utf-8')
+large_unicode=re.search(r'uint16_t unicode_list\[\] = \{(.*?)\};',large_text,re.S)[1]
+assert [int(x)+0x20 for x in re.findall(r'\d+',large_unicode)]==inv['codepoints']
+assert '.line_height=28, .base_line=5' in large_text
+print(f'20px title/current lyric coverage: PASS ({len(points)} identical codepoints)')

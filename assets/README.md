@@ -70,3 +70,25 @@ for every 500 mAh cell; see the [hardware guide](../docs/hardware-design/AI_HARD
 ## Passport Music cover
 
 `images/passport-music-cover.png` is an AI-generated play illustration, not a device photograph or runtime screenshot. Generated with the built-in image tool for this release; no third-party photos or song lyrics are included.
+
+## A1 interface assets
+
+Original code-drawn pixel-cat artwork: `images/music-cat-play.svg` and
+`images/music-cat-rest.svg`, under the repository MIT license. Regenerate the
+two40x40 RGB565 frames in `images/music_cat.c` with
+`python tools/generate_music_cat.py` (Pillow13.0.0).
+`python tools/generate_music_font.py --size 20` for `fonts/music_font_20.c`
+and `fonts/music_font_20_inventory.json`. The20px font shares the same licensed
+SC/KR sources and exact coverage as16px. Gate hashes validate both sizes.
+
+## Additional original pets
+
+`images/music-dog-*.svg`, `images/music-rabbit-*.svg` and
+`images/music-penguin-*.svg` are original integer-grid artwork under the
+repository MIT license. The existing `generate_music_cat.py` emits all four
+animals' play/rest frames into `images/music_cat.c`: eight40x40 RGB565 frames,
+25600 bytes total. All animations use the same pose function and position.
+
+## Release interface images
+
+`../docs/images/passport-music-*.png` compose this application's native interface renders and original pixel pets. Song/lyrics are sample content, not live telemetry or device photographs. Settings footers are intentionally blank; new footer hints or status text require the creator's explicit approval.

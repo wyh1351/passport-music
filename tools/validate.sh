@@ -44,6 +44,9 @@ run_static_checks() {
     "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
         tests/test_music_battery.c -o "${test_dir}/test_music_battery"
     "${test_dir}/test_music_battery"
+    "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
+        tests/test_music_cat.c -o "${test_dir}/test_music_cat"
+    "${test_dir}/test_music_cat"
     "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Itests/music_ble_stubs -Imain \
         tests/test_music_ble.c -o "${test_dir}/test_music_ble"
     "${test_dir}/test_music_ble"

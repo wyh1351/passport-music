@@ -5,6 +5,10 @@ enum { MUSIC_PREF_CHANGED=1, MUSIC_PREF_SAVE=2 };
 bool music_brightness_valid(int percent);
 bool music_screen_seconds_valid(int seconds);
 int music_screen_option(int seconds);
+bool music_pet_valid(int pet);
+const char *music_pet_name(int pet);
+// Keep device-owned preferences when replacing the incoming music snapshot.
+void music_preferences_copy(music_state_t *dest, const music_state_t *source);
 // Pure settings navigation. UP/DOWN/OK are 0/1/2, as in music_key_action.
 unsigned music_settings_input(music_state_t *state, int key, bool held, bool twice);
 

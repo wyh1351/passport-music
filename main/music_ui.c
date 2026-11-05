@@ -1,132 +1,164 @@
 #include "music_ui.h"
 #include "music_settings.h"
 #include "music_battery.h"
+#include "music_cat.h"
 #include "lvgl.h"
 #include <stdio.h>
 #include <string.h>
 LV_FONT_DECLARE(music_font_16);
-static lv_obj_t *status, *battery_label, *title, *artist, *album, *line1, *line2, *line3, *footer, *progress, *volume;
-static lv_obj_t *label(lv_obj_t *root, int x, int y, int w, int h, uint32_t color) {
-    lv_obj_t *o = lv_label_create(root);
-    lv_obj_set_pos(o, x, y); lv_obj_set_size(o, w, h);
-    lv_obj_set_style_text_font(o, &music_font_16, 0);
-    lv_obj_set_style_text_color(o, lv_color_hex(color), 0);
-    lv_label_set_long_mode(o, LV_LABEL_LONG_DOT);
-    return o;
+LV_FONT_DECLARE(music_font_20);
+LV_IMAGE_DECLARE(music_cat_play);
+LV_IMAGE_DECLARE(music_cat_rest);
+LV_IMAGE_DECLARE(music_dog_play);
+LV_IMAGE_DECLARE(music_dog_rest);
+LV_IMAGE_DECLARE(music_rabbit_play);
+LV_IMAGE_DECLARE(music_rabbit_rest);
+LV_IMAGE_DECLARE(music_penguin_play);
+LV_IMAGE_DECLARE(music_penguin_rest);
+enum { INK=0x191b1f, MUTED=0x616876, RULE=0xdfe2e7, RED=0xe4002b, SOFT=0xfff0f3 };
+static lv_obj_t *status,*battery_label,*title,*artist,*before,*current,*after;
+static lv_obj_t *progress,*elapsed,*duration,*volume,*desktop,*divider,*accent,*cat;
+static lv_obj_t *rows[MUSIC_SETTING_COUNT],*names[MUSIC_SETTING_COUNT],*values[MUSIC_SETTING_COUNT],*detail_hint;
+static lv_obj_t *label(lv_obj_t *root,int x,int y,int w,int h,uint32_t color,const lv_font_t *font) {
+    lv_obj_t *o=lv_label_create(root); lv_obj_remove_style_all(o);
+    lv_obj_set_pos(o,x,y); lv_obj_set_size(o,w,h);
+    lv_obj_set_style_text_font(o,font,0); lv_obj_set_style_text_color(o,lv_color_hex(color),0);
+    lv_label_set_long_mode(o,LV_LABEL_LONG_DOT); return o;
 }
-static void text(lv_obj_t *o, const char *value) {
-    if (strcmp(lv_label_get_text(o), value)) lv_label_set_text(o, value);
+static lv_obj_t *box(lv_obj_t *root,int x,int y,int w,int h,uint32_t color) {
+    lv_obj_t *o=lv_obj_create(root); lv_obj_remove_style_all(o);
+    lv_obj_set_pos(o,x,y); lv_obj_set_size(o,w,h);
+    lv_obj_set_style_bg_color(o,lv_color_hex(color),0); lv_obj_set_style_bg_opa(o,LV_OPA_COVER,0);
+    lv_obj_remove_flag(o,LV_OBJ_FLAG_SCROLLABLE); return o;
 }
-static void timeout_text(char *out, size_t size, int seconds) {
+static void show(lv_obj_t *o,bool visible) {
+    if (visible) lv_obj_remove_flag(o,LV_OBJ_FLAG_HIDDEN); else lv_obj_add_flag(o,LV_OBJ_FLAG_HIDDEN);
+}
+static void text(lv_obj_t *o,const char *value) {
+    if (strcmp(lv_label_get_text(o),value)) lv_label_set_text(o,value);
+}
+static void timeout_text(char *out,size_t size,int seconds) {
     if (!seconds) snprintf(out,size,"永不息屏");
     else if (seconds<60) snprintf(out,size,"%d 秒",seconds);
     else snprintf(out,size,"%d 分钟",seconds/60);
 }
-void music_ui_create(void) {
-    lv_obj_t *root = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(root, lv_color_hex(0x101318), 0);
-    lv_obj_set_style_text_font(root, &music_font_16, 0);
-    lv_obj_remove_flag(root, LV_OBJ_FLAG_SCROLLABLE);
-    status = label(root, 22, 14, 144, 22, 0xef6b65);
-    battery_label = label(root, 178, 14, 42, 22, 0xa4adb8);
-    title = label(root, 18, 50, 204, 48, 0xffffff);
-    lv_label_set_long_mode(title, LV_LABEL_LONG_WRAP);
-    artist = label(root, 18, 102, 204, 23, 0xb0bac8);
-    album = label(root, 18, 129, 204, 23, 0x798798);
-    line1 = label(root, 18, 163, 204, 24, 0x798798);
-    line2 = label(root, 18, 189, 204, 46, 0xffd8a8);
-    lv_label_set_long_mode(line2, LV_LABEL_LONG_WRAP);
-    line3 = label(root, 18, 237, 204, 23, 0x798798);
-    progress = lv_bar_create(root);
-    lv_obj_set_pos(progress, 18, 267); lv_obj_set_size(progress, 204, 4);
-    lv_obj_set_style_bg_color(progress, lv_color_hex(0x303742), LV_PART_MAIN);
-    lv_obj_set_style_bg_color(progress, lv_color_hex(0xef6b65), LV_PART_INDICATOR);
-    lv_bar_set_range(progress, 0, 1000);
-    volume = label(root, 18, 276, 204, 21, 0xc9d2dc);
-    footer = label(root, 18, 298, 204, 20, 0x798798);
-    music_state_t initial = {.desktop_lyrics=-1}; music_ui_update(&initial, -1, 1000000);
-    lv_screen_load(root);
+static void pet_update(const music_state_t *s) {
+    static const lv_image_dsc_t *sprites[MUSIC_PET_NONE][2]={
+        {&music_cat_play,&music_cat_rest},{&music_dog_play,&music_dog_rest},
+        {&music_rabbit_play,&music_rabbit_rest},{&music_penguin_play,&music_penguin_rest}};
+    int selected=music_pet_valid(s->pet)?s->pet:MUSIC_PET_CAT;
+    show(cat,selected!=MUSIC_PET_NONE);
+    if (selected==MUSIC_PET_NONE) return;
+    bool playing=s->connected && s->available && s->playing && !s->settings_page;
+    music_cat_pose_t pose=music_cat_pose(lv_tick_get(),playing);
+    const lv_image_dsc_t *src=sprites[selected][pose.closed?1:0];
+    if (lv_image_get_src(cat)!=src) lv_image_set_src(cat,src);
+    lv_obj_set_y(cat,46+pose.dy);
 }
-void music_ui_update(const music_state_t *s, int battery_raw, unsigned passkey) {
-    int battery=music_battery_display_soc(battery_raw);
-    char b[96];
-    if (battery < 0) snprintf(b, sizeof(b), "--%%");
-    else snprintf(b, sizeof(b), "%d%%", battery);
-    text(battery_label, b);
-    lv_obj_set_style_text_align(line2,s->settings_page && s->settings_edit?LV_TEXT_ALIGN_CENTER:LV_TEXT_ALIGN_LEFT,0);
-    lv_obj_remove_flag(line3,LV_OBJ_FLAG_HIDDEN); lv_obj_remove_flag(progress,LV_OBJ_FLAG_HIDDEN);
-    lv_obj_set_y(artist,102); lv_obj_set_y(album,129); lv_obj_set_y(line1,163); lv_obj_set_y(line2,189);
-    lv_obj_set_style_text_color(artist,lv_color_hex(0xb0bac8),0);
-    lv_obj_set_style_text_color(album,lv_color_hex(0x798798),0);
-    lv_obj_set_style_text_color(line1,lv_color_hex(0x798798),0);
-    lv_obj_set_style_text_color(line2,lv_color_hex(0xffd8a8),0);
+void music_ui_create(void) {
+    lv_obj_t *root=lv_obj_create(NULL); lv_obj_remove_style_all(root);
+    lv_obj_set_style_bg_color(root,lv_color_hex(0xffffff),0); lv_obj_set_style_bg_opa(root,LV_OPA_COVER,0);
+    lv_obj_set_style_text_font(root,&music_font_16,0); lv_obj_remove_flag(root,LV_OBJ_FLAG_SCROLLABLE);
+    status=label(root,16,12,151,24,RED,&music_font_16);
+    battery_label=label(root,174,16,50,20,MUTED,&lv_font_montserrat_14);
+    lv_obj_set_style_text_align(battery_label,LV_TEXT_ALIGN_RIGHT,0);
+    title=label(root,16,47,166,29,INK,&music_font_20);
+    lv_label_set_long_mode(title,LV_LABEL_LONG_SCROLL_CIRCULAR);
+    lv_obj_set_style_anim_duration(title,7000,0);
+    artist=label(root,16,83,208,24,MUTED,&music_font_16);
+    cat=lv_image_create(root); lv_obj_set_pos(cat,190,46); lv_image_set_src(cat,&music_cat_rest);
+    divider=box(root,16,111,208,1,RULE);
+    before=label(root,16,128,208,24,MUTED,&music_font_16);
+    accent=box(root,16,163,3,58,RED);
+    current=label(root,27,162,197,58,RED,&music_font_20);
+    lv_obj_set_style_text_line_space(current,1,0);
+    after=label(root,16,233,208,24,MUTED,&music_font_16);
+    progress=lv_bar_create(root); lv_obj_remove_style_all(progress);
+    lv_obj_set_pos(progress,16,266); lv_obj_set_size(progress,208,3);
+    lv_obj_set_style_bg_opa(progress,LV_OPA_COVER,LV_PART_MAIN);
+    lv_obj_set_style_bg_color(progress,lv_color_hex(RULE),LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(progress,LV_OPA_COVER,LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(progress,lv_color_hex(RED),LV_PART_INDICATOR); lv_bar_set_range(progress,0,1000);
+    elapsed=label(root,16,274,106,20,MUTED,&lv_font_montserrat_14);
+    duration=label(root,130,274,94,20,MUTED,&lv_font_montserrat_14);
+    lv_obj_set_style_text_align(duration,LV_TEXT_ALIGN_RIGHT,0);
+    volume=label(root,16,296,103,24,INK,&music_font_16);
+    desktop=label(root,119,296,105,24,MUTED,&music_font_16);
+    lv_obj_set_style_text_align(desktop,LV_TEXT_ALIGN_RIGHT,0);
+    for (int i=0;i<MUSIC_SETTING_COUNT;i++) {
+        rows[i]=box(root,12,112+i*39,216,36,0xffffff);
+        names[i]=label(rows[i],10,6,106,24,INK,&music_font_16);
+        values[i]=label(rows[i],116,8,90,24,MUTED,&lv_font_montserrat_14);
+        lv_obj_set_style_text_align(values[i],LV_TEXT_ALIGN_RIGHT,0);
+        if (i==MUSIC_SETTING_SCREEN || i==MUSIC_SETTING_PET) lv_obj_set_style_text_font(values[i],&music_font_16,0);
+    }
+    detail_hint=label(root,16,126,208,26,MUTED,&music_font_16);
+    music_state_t initial={.desktop_lyrics=-1}; music_ui_update(&initial,-1,1000000); lv_screen_load(root);
+}
+void music_ui_update(const music_state_t *s,int battery_raw,unsigned passkey) {
+    char b[112]; int battery=music_battery_display_soc(battery_raw);
+    if (battery<0) snprintf(b,sizeof(b),"--%%"); else snprintf(b,sizeof(b),"%d%%",battery);
+    text(battery_label,b); pet_update(s);
+    bool menu=s->settings_page && !s->settings_edit,detail=s->settings_page && s->settings_edit;
+    for (int i=0;i<MUSIC_SETTING_COUNT;i++) show(rows[i],menu);
+    show(detail_hint,detail);
+    show(before,!s->settings_page); show(after,!s->settings_page); show(current,!menu); show(accent,!s->settings_page);
+    show(progress,!menu && !(detail && s->setting==MUSIC_SETTING_PET)); show(elapsed,!s->settings_page); show(duration,!s->settings_page);
+    show(volume,!s->settings_page); show(desktop,!s->settings_page);
+    lv_obj_set_style_text_align(current,detail?LV_TEXT_ALIGN_CENTER:LV_TEXT_ALIGN_LEFT,0);
+    lv_obj_set_pos(current,detail?16:27,detail?174:162); lv_obj_set_width(current,detail?208:197);
     if (s->settings_page) {
-        if (!s->settings_edit) {
-            text(status,"设备设置"); text(title,"显示与歌词");
-            lv_obj_set_y(artist,108); lv_obj_set_y(album,148); lv_obj_set_y(line1,188); lv_obj_set_y(line2,225);
-            lv_obj_add_flag(line3,LV_OBJ_FLAG_HIDDEN); lv_obj_add_flag(progress,LV_OBJ_FLAG_HIDDEN);
-            snprintf(b,sizeof(b),"%s歌词微调  %+dms",s->setting==MUSIC_SETTING_OFFSET?"> ":"  ",s->lyric_offset_ms); text(artist,b);
-            char duration[32]; timeout_text(duration,sizeof(duration),s->screen_seconds);
-            snprintf(b,sizeof(b),"%s自动息屏  %s",s->setting==MUSIC_SETTING_SCREEN?"> ":"  ",duration); text(album,b);
-            snprintf(b,sizeof(b),"%s屏幕亮度  %d%%",s->setting==MUSIC_SETTING_BRIGHTNESS?"> ":"  ",s->brightness); text(line1,b);
-            lv_obj_t *selected=s->setting==MUSIC_SETTING_OFFSET?artist:s->setting==MUSIC_SETTING_SCREEN?album:line1;
-            lv_obj_set_style_text_color(selected,lv_color_hex(0xffd8a8),0);
-            if (!s->connected && passkey<1000000) { snprintf(b,sizeof(b),"蓝牙配对码：%06u",passkey); text(line2,b); }
-            else text(line2,s->setting==MUSIC_SETTING_OFFSET?"调整歌词提前或延后":s->setting==MUSIC_SETTING_SCREEN?"设置自动息屏时长":"调节亮屏时的背光");
-            text(volume,""); text(footer,"");
+        text(status,"设备设置");
+        if (menu) {
+            text(title,"显示与歌词"); text(artist,"歌词、显示与宠物");
+            const char *items[]={"歌词微调","自动息屏","屏幕亮度","屏幕宠物"};
+            for (int i=0;i<MUSIC_SETTING_COUNT;i++) {
+                bool selected=(int)s->setting==i;
+                lv_obj_set_style_bg_color(rows[i],lv_color_hex(selected?SOFT:0xffffff),0);
+                lv_obj_set_style_border_color(rows[i],lv_color_hex(selected?RED:RULE),0);
+                lv_obj_set_style_border_width(rows[i],selected?3:1,0);
+                lv_obj_set_style_border_side(rows[i],selected?LV_BORDER_SIDE_LEFT:LV_BORDER_SIDE_BOTTOM,0);
+                lv_obj_set_style_text_color(names[i],lv_color_hex(selected?RED:INK),0);
+                lv_obj_set_style_text_color(values[i],lv_color_hex(selected?RED:MUTED),0); text(names[i],items[i]);
+            }
+            snprintf(b,sizeof(b),"%+d ms",s->lyric_offset_ms); text(values[0],b);
+            timeout_text(b,sizeof(b),s->screen_seconds); text(values[1],b);
+            snprintf(b,sizeof(b),"%d%%",s->brightness); text(values[2],b);
+            text(values[MUSIC_SETTING_PET],music_pet_name(s->pet));
+            if (!s->connected && passkey<1000000) { snprintf(b,sizeof(b),"配对码：%06u",passkey); text(artist,b); }
             return;
         }
-        if (s->setting!=MUSIC_SETTING_OFFSET) {
-            bool screen=s->setting==MUSIC_SETTING_SCREEN;
-            text(status,"显示设置"); text(title,screen?"自动息屏":"屏幕亮度");
-            text(artist,screen?"无按键操作后关闭背光":"上键增亮 / 下键调暗");
-            if (!s->connected && passkey<1000000) { snprintf(b,sizeof(b),"蓝牙配对码：%06u",passkey); text(album,b); }
-            else text(album,screen?"播放音乐时同样生效":"立即预览 / 自动保存");
-            text(line1,screen?"上键延长 / 下键缩短":"短按 5%  长按 20%");
-            if (screen) timeout_text(b,sizeof(b),s->screen_seconds);
-            else snprintf(b,sizeof(b),"%d %%",s->brightness);
-            text(line2,b);
-            text(line3,s->save_status==MUSIC_SAVE_PENDING?"正在保存":s->save_status==MUSIC_SAVE_ERROR?"保存失败，仅本次有效":"已保存");
-            lv_bar_set_value(progress,screen?music_screen_option(s->screen_seconds)*1000/6:s->brightness*10,LV_ANIM_OFF);
-            text(volume,screen?"":"范围 5% 至 100%");
-            text(footer,"");
-            return;
+        if (s->setting==MUSIC_SETTING_OFFSET) {
+            text(title,"歌词对齐微调"); text(artist,"正值更早 / 负值更晚"); text(detail_hint,"短按 50ms / 长按 250ms");
+            snprintf(b,sizeof(b),"%+d ms",s->lyric_offset_ms); text(current,b);
+            lv_bar_set_value(progress,(s->lyric_offset_ms+MUSIC_OFFSET_LIMIT_MS)*1000/(2*MUSIC_OFFSET_LIMIT_MS),LV_ANIM_OFF);
+        } else if (s->setting==MUSIC_SETTING_SCREEN) {
+            text(title,"自动息屏"); text(artist,"无按键操作后关闭背光"); text(detail_hint,"播放音乐时同样生效");
+            timeout_text(b,sizeof(b),s->screen_seconds); text(current,b);
+            lv_bar_set_value(progress,music_screen_option(s->screen_seconds)*1000/6,LV_ANIM_OFF);
+        } else if (s->setting==MUSIC_SETTING_PET) {
+            text(title,"屏幕宠物"); text(artist,"歌名旁的像素小伙伴");
+            text(detail_hint,"上 / 下选择，自动保存"); text(current,music_pet_name(s->pet));
+        } else {
+            text(title,"屏幕亮度"); text(artist,"立即预览 / 自动保存"); text(detail_hint,"短按 5% / 长按 20%");
+            snprintf(b,sizeof(b),"%d %%",s->brightness); text(current,b); lv_bar_set_value(progress,s->brightness*10,LV_ANIM_OFF);
         }
-        text(status,"对齐设置"); text(title,"歌词对齐微调");
-        text(artist,"上键提前 / 下键延后");
-        if (!s->connected && passkey<1000000) {
-            snprintf(b,sizeof(b),"蓝牙配对码：%06u",passkey); text(album,b);
-        } else text(album,"正值更早 / 负值更晚");
-        text(line1,"短按 50ms  长按 250ms");
-        snprintf(b,sizeof(b),"%+d ms",s->lyric_offset_ms); text(line2,b);
-        text(line3,s->save_status==MUSIC_SAVE_PENDING?"正在保存":s->save_status==MUSIC_SAVE_ERROR?"保存失败，仅本次有效":
-            !s->connected?"已保存 / 等待连接":!s->offset_supported?"请更新电脑桥接":
-            s->offset_ack!=s->lyric_offset_ms?"已保存 / 等待同步":"已保存 / 已同步");
-        lv_bar_set_value(progress,(s->lyric_offset_ms+MUSIC_OFFSET_LIMIT_MS)*1000/(2*MUSIC_OFFSET_LIMIT_MS),LV_ANIM_OFF);
-        text(volume,"范围 -2000 至 +2000ms");
-        text(footer,"");
+        if (!s->connected && passkey<1000000) { snprintf(b,sizeof(b),"配对码：%06u",passkey); text(artist,b); }
         return;
     }
-    text(status, !s->connected ? "等待电脑连接" : !s->available ? "网易云未就绪" : s->playing ? "正在播放" : "已暂停");
-    text(title, s->connected && s->title[0] ? s->title : "随身音乐遥控器");
-    text(artist, s->connected ? s->artist : "蓝牙名称：Passport Music");
-    text(album, s->connected ? s->album : "电脑网易云音乐遥控");
-    text(line1, s->connected ? s->before : "");
-    if (!s->connected && passkey < 1000000) {
-        snprintf(b, sizeof(b), "蓝牙配对码：%06u", passkey); text(line2, b);
-    } else text(line2, !s->connected ? (passkey==1000001 ? "蓝牙启动失败，请使用 USB" : "电脑启动音乐桥接程序") : s->lyric[0] ? s->lyric : s->message);
-    text(line3, s->connected ? s->after : "");
-    lv_bar_set_value(progress, s->connected && s->duration > 0 ? (int)((int64_t)s->position * 1000 / s->duration) : 0, LV_ANIM_OFF);
+    text(status,!s->connected?"等待电脑连接":!s->available?"网易云未就绪":s->playing?"正在播放":"已暂停");
+    text(title,s->connected && s->title[0]?s->title:"随身音乐遥控器"); text(artist,s->connected?s->artist:"Passport Music / 蓝牙");
+    text(before,s->connected?s->before:"");
+    if (!s->connected && passkey<1000000) { snprintf(b,sizeof(b),"配对码：%06u",passkey); text(current,b); }
+    else text(current,!s->connected?(passkey==1000001?"蓝牙启动失败\n请使用 USB":"等待电脑\n音乐桥接连接"):s->lyric[0]?s->lyric:s->message);
+    text(after,s->connected?s->after:"");
+    lv_bar_set_value(progress,s->connected && s->duration>0?(int)((int64_t)s->position*1000/s->duration):0,LV_ANIM_OFF);
+    if (s->connected && s->duration>0) {
+        snprintf(b,sizeof(b),"%02d:%02d",s->position/60000,s->position/1000%60); text(elapsed,b);
+        snprintf(b,sizeof(b),"%02d:%02d",s->duration/60000,s->duration/1000%60); text(duration,b);
+    } else { text(elapsed,s->connected?"--:--":""); text(duration,""); }
     if (s->connected) {
-        char vol[16];
-        if (s->volume < 0) snprintf(vol, sizeof(vol), "--");
-        else snprintf(vol, sizeof(vol), "%d%%", s->volume);
-        snprintf(b, sizeof(b), "%02d:%02d / %02d:%02d  音量 %s", s->position / 60000,
-            s->position / 1000 % 60, s->duration / 60000, s->duration / 1000 % 60, vol);
-        if (!s->duration) snprintf(b, sizeof(b), "进度不可用   音量 %s", vol);
-    } else snprintf(b, sizeof(b), "蓝牙无线连接 / USB 调试");
-    text(volume, b);
-    if (s->connected && s->desktop_lyrics>=0)
-        text(footer,s->desktop_lyrics?"桌面歌词：开启":"桌面歌词：关闭");
-    else text(footer,"");
+        if (s->volume<0) snprintf(b,sizeof(b),"音量 --"); else snprintf(b,sizeof(b),"音量 %d%%",s->volume);
+        text(volume,b); text(desktop,s->desktop_lyrics<0?"":s->desktop_lyrics?"桌面歌词 开":"桌面歌词 关");
+    } else { text(volume,""); text(desktop,""); }
 }

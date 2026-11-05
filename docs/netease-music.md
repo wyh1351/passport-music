@@ -1,29 +1,39 @@
-[简体中文](netease-music.zh_CN.md) · **English**
+**English** · [简体中文](netease-music.zh_CN.md)
 
 # Passport Music
 
-You need a Windows PC with Bluetooth, the NetEase Cloud Music desktop app, and the companion bridge. Audio plays on the PC; no device Wi-Fi setup is required. Tested with NetEase 3.1.31.205174; other or future versions may require changes.
+You need a Windows PC with Bluetooth and the NetEase Cloud Music desktop app. No device Wi-Fi setup is needed. Online lyrics use the PC's internet connection.
 
-1. Download PassportMusic-Windows-v1.0.3.zip from https://github.com/wyh1351/passport-music/releases/latest. Extract it to a permanent folder and keep PassportMusic.exe, PassportMusicBackground.exe and _internal together.
+First use
+1. Download PassportMusic-Windows-v1.1.0.zip from https://github.com/wyh1351/passport-music/releases/latest and extract it to a permanent folder. Keep the programs and _internal folder together.
+2. Flash this play with the community flasher. For manual flashing, FoloToy-AI-Passport-full.bin starts at 0x0 and may reset old settings and bonds. Never flash an app-only upgrade at 0x0.
+3. Run Enable-Autostart.cmd once for hidden operation after Windows login. Fully exit NetEase, including its tray instance, then run Open-NetEase-Remote.cmd and play a song.
+4. Add a Bluetooth device in Windows Settings, choose Passport Music and enter the six-digit code shown on the device. The song, lyrics and progress appear after connection. Run only one bridge.
 
-2. Flash the full firmware using the community flasher. The merged image starts at 0x0 and may reset device settings and Bluetooth bonds. Never write an app-only upgrade image at 0x0. The device initially waits for a computer.
+Home controls
+- UP: tap +5 volume points, double-tap +20, hold for the previous track.
+- DOWN: tap -5 volume points, double-tap -20, hold for the next track.
+- OK: tap play/pause, double-tap PC desktop lyrics on/off, hold to open settings.
+Volume changes the NetEase app's own slider, in percentage points.
 
-3. Run Enable-Autostart.cmd once for hidden operation after Windows login. The bridge does not launch NetEase automatically. Fully exit NetEase, including its tray instance, then run Open-NetEase-Remote.cmd to launch the original client with remote-control arguments. Play a song.
+Settings
+Use UP/DOWN to select and tap OK to enter. Tap OK in a detail page to go back; hold OK anywhere in settings to return home.
+- Lyric timing: UP earlier, DOWN later. Tap 50ms or hold 250ms, within +/-2000ms.
+- Screen timeout: 15/30 seconds, 1/2/5/10 minutes or never.
+- Brightness: 5-100%; UP brighter, DOWN dimmer. Tap 5 points or hold 20.
+- Screen pet: Headphone cat, Dog, Rabbit, Penguin or Hidden. UP/DOWN cycles the choices.
+Changes save after about one idle second and survive a restart. Settings footers are blank. Any key wakes the screen; that first gesture does not control the music.
 
-4. In Windows Settings, add a Bluetooth device named Passport Music and enter the six-digit code shown on its screen. The device then displays the song, three lyric lines and progress. Bonded devices reconnect automatically. Run only one bridge.
+Opening NetEase later
+Use Open-NetEase-Remote.cmd. To use an existing desktop/taskbar shortcut, append a space and these arguments to its Target field, outside the existing path quotes:
+--remote-debugging-port=9223 --remote-debugging-address=127.0.0.1
+Fully exit NetEase before reopening it. For a taskbar shortcut, right-click the icon, then right-click the app name to open Properties. Client updates or repinning can remove the arguments.
 
-5. Desktop/taskbar shortcuts also work when their target ends with --remote-debugging-port=9223 --remote-debugging-address=127.0.0.1. Fully exit the old client before relaunching. Updates or repinning may remove these arguments.
+Troubleshooting
+- No volume/progress control: fully exit NetEase and reopen it with Open-NetEase-Remote.cmd.
+- No connection: keep the device on and PC Bluetooth enabled. The bridge retries; reconnection after flashing can take time. Background-Status.cmd checks status, Stop-Background.cmd stops the bridge and Disable-Autostart.cmd disables logon startup.
+- No lyrics: check internet access and try another song. You can also place a UTF-8 timed title - artist.lrc file in the bridge's lyrics folder and restart it; replace Windows-invalid filename characters with underscores.
 
-Home controls: tap UP/DOWN for +/-5 application-volume points, double-tap for +/-20, hold for previous/next track. Tap OK for play/pause, double-tap to toggle PC desktop lyrics, hold to enter settings.
+Existing users can keep the v1.0.2/v1.0.3 companion. A compatible existing partition layout supports an app-only upgrade at 0x10000 without chip erase to retain settings. If unsure, use the community full flash and pair again.
 
-Settings: UP/DOWN selects lyric timing, screen timeout or brightness; tap OK to enter. Tap OK in a detail page to return to the menu; hold OK anywhere in settings to return home. Timing changes by 50ms per tap or 250ms per hold within +/-2000ms; positive is earlier, negative later. Timeout choices are 15/30 seconds, 1/2/5/10 minutes or never. Brightness is 5-100%. Changes save automatically after about one idle second. Any key wakes the screen, consuming that first gesture.
-
-Windows lyrics prefer IPv4 direct access, then retry with fresh proxy settings only if direct access fails. On the author's current network, exiting FlClash and changing songs passed device lyric-display and synchronization checks. Network or endpoint failures can still interrupt online lyrics. For local lyrics, put a UTF-8 timed file named title - artist.lrc in the bridge's lyrics directory and restart the bridge; replace Windows-invalid filename characters with underscores. No account cookies are read.
-
-If progress or internal volume is unavailable, check the client arguments and fully relaunch NetEase. Background-Status.cmd checks status; Stop-Background.cmd stops the bridge, while Disable-Autostart.cmd disables logon startup. Re-pair through Windows when necessary. Temporary connection failures retry.
-
-Battery display: the public firmware shows the gauge percentage without scaling: raw 98% displays 98%, and 100% displays 100%. Failed or invalid readings still show “--%”. The author-specific 98%-to-100% mapping has been removed; no source edit is required to disable it. The gauge reading remains an estimate. Gauge parameters, charging control and battery capacity are unchanged. The cover is an illustration. The full 0x0 image passed build verification; physical feature acceptance used an app-only upgrade retaining settings. This raw-percentage revision has not been flashed to hardware. Full0x0 flashing, an actual new Windows login and battery endurance remain unverified.
-
-Updating an existing bridge: run Stop-Background.cmd from the installed folder, wait for exit and back up the installation, copy the new PassportMusic folder contents over it, retain the lyrics folder, then run PassportMusicBackground.exe --background. Existing autostart need not be reinstalled. Existing compatible installations may use the app-only image at0x10000 to retain settings. The v1.0.2 companion executable can be retained; update older companions.
-
-Song-text coverage: existing Chinese/Latin, Japanese hiragana/katakana, every modern Hangul syllable and common Korean jamo. The new companion composes canonically equivalent kana/Hangul. Menus remain Chinese; other uncovered scripts, emoji and rare ideographs may still show question marks. This is not all-script or complex-shaping support. Japanese/Korean display passed actual acceptance on the author device.
+Tested with NetEase 3.1.31.205174. Other or future versions may require adaptation. Chinese/Latin, Japanese kana and modern Korean are supported; menus remain Chinese. Other scripts and emoji may not render. Images are current-interface renders with demonstration song and lyric text.

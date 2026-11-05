@@ -8,6 +8,17 @@ int music_screen_option(int seconds) {
     return -1;
 }
 bool music_screen_seconds_valid(int seconds) { return music_screen_option(seconds)>=0; }
+bool music_pet_valid(int pet) { return pet>=MUSIC_PET_CAT && pet<MUSIC_PET_COUNT; }
+const char *music_pet_name(int pet) {
+    static const char *names[]={"耳机猫","小狗","小兔","企鹅","不显示"};
+    return names[music_pet_valid(pet)?pet:MUSIC_PET_CAT];
+}
+void music_preferences_copy(music_state_t *dest,const music_state_t *source) {
+    dest->settings_page=source->settings_page; dest->settings_edit=source->settings_edit;
+    dest->setting=source->setting; dest->lyric_offset_ms=source->lyric_offset_ms;
+    dest->brightness=source->brightness; dest->screen_seconds=source->screen_seconds;
+    dest->pet=source->pet; dest->save_status=source->save_status;
+}
 unsigned music_settings_input(music_state_t *s, int key, bool held, bool twice) {
     if (!s->settings_page || key<0 || key>2) return 0;
     if ((unsigned)s->setting>=MUSIC_SETTING_COUNT) s->setting=MUSIC_SETTING_OFFSET;
@@ -20,6 +31,12 @@ unsigned music_settings_input(music_state_t *s, int key, bool held, bool twice) 
         return 0;
     }
     if (key==2) { s->settings_edit=false; return MUSIC_PREF_SAVE; }
+    if (s->setting==MUSIC_SETTING_PET) {
+        int previous=s->pet;
+        int pet=music_pet_valid(previous)?previous:MUSIC_PET_CAT;
+        s->pet=(music_pet_t)((pet+(key==0?MUSIC_PET_COUNT-1:1))%MUSIC_PET_COUNT);
+        return (int)s->pet!=previous?MUSIC_PREF_CHANGED:0;
+    }
     int *value=s->setting==MUSIC_SETTING_OFFSET?&s->lyric_offset_ms:
         s->setting==MUSIC_SETTING_SCREEN?&s->screen_seconds:&s->brightness;
     int previous=*value;

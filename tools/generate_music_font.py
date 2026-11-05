@@ -30,7 +30,9 @@ EXTRA = {0x30fb}
 # original Unicode in input/output; only their bitmap source is aliased.
 ALIASES = {0x2219:0xb7,0x22c5:0xb7}
 
-def generate():
+def generate(size=16):
+    output = OUTPUT if size == 16 else FONT.with_name(f'music_font_{size}.c')
+    inventory_path = INVENTORY if size == 16 else FONT.with_name(f'music_font_{size}_inventory.json')
     maps = [TTFont(path).getBestCmap() for path in (FONT,KOREAN_FONT)]
     def source(cp):
         return 1 if any(lo<=cp<=hi for lo,hi in KOREAN_RANGES) else 0
@@ -38,7 +40,7 @@ def generate():
     chars = [cp for cp in requested if ALIASES.get(cp,cp) in maps[source(cp)]
              and unicodedata.category(chr(cp)) not in ('Cc','Cf','Cn','Zl','Zp')]
     missing = sorted(set(requested) - set(chars))
-    fonts = [ImageFont.truetype(str(path), 16) for path in (FONT,KOREAN_FONT)]
+    fonts = [ImageFont.truetype(str(path), size) for path in (FONT,KOREAN_FONT)]
     for font in fonts:
         font.set_variation_by_axes([400])
     bitmap = bytearray()
@@ -81,23 +83,24 @@ static lv_font_fmt_txt_dsc_t dsc = {
     .glyph_bitmap=bitmap, .glyph_dsc=glyphs, .cmaps=cmaps, .cmap_num=1,
     .bpp=2, .kern_scale=0, .kern_dsc=NULL, .kern_classes=0, .bitmap_format=0
 };
-const lv_font_t music_font_16 = {
+const lv_font_t MUSIC_FONT_NAME = {
     .get_glyph_dsc=lv_font_get_glyph_dsc_fmt_txt,
     .get_glyph_bitmap=lv_font_get_bitmap_fmt_txt,
-    .line_height=22, .base_line=4, .subpx=LV_FONT_SUBPX_NONE,
+    .line_height=MUSIC_LINE_HEIGHT, .base_line=MUSIC_BASELINE, .subpx=LV_FONT_SUBPX_NONE,
     .underline_position=-2, .underline_thickness=1, .dsc=&dsc
 };''')
-    OUTPUT.write_text('\n'.join(out)+'\n', encoding='utf-8')
+    generated = '\n'.join(out).replace('MUSIC_FONT_NAME', f'music_font_{size}').replace('MUSIC_LINE_HEIGHT', str(22 if size == 16 else 28)).replace('MUSIC_BASELINE', str(4 if size == 16 else 5))+'\n'
+    output.write_text(generated, encoding='utf-8')
     inventory = dict(font_sha256=hashlib.sha256(FONT.read_bytes()).hexdigest(),
                      font_sources=[dict(file=path.name,sha256=hashlib.sha256(path.read_bytes()).hexdigest())
                                    for path in (FONT,KOREAN_FONT)],
                      korean_source=KOREAN_SOURCE,korean_ranges=KOREAN_RANGES,
-                     generated_sha256=hashlib.sha256(OUTPUT.read_bytes()).hexdigest(),
-                     codepoints=chars, missing=missing, bitmap_bytes=len(bitmap), size=16, bpp=2,
+                     generated_sha256=hashlib.sha256(output.read_bytes()).hexdigest(),
+                     codepoints=chars, missing=missing, bitmap_bytes=len(bitmap), size=size, bpp=2,
                      ranges=RANGES,extra=sorted(EXTRA),glyph_aliases={str(k):v for k,v in ALIASES.items()},
                      unicode_version=unicodedata.unidata_version)
-    INVENTORY.write_text(json.dumps(inventory, indent=2)+'\n', encoding='utf-8')
-    FONT.with_name('music_font_coverage.h').write_text(
+    inventory_path.write_text(json.dumps(inventory, indent=2)+'\n', encoding='utf-8')
+    if size == 16: FONT.with_name('music_font_coverage.h').write_text(
         '// Generated coverage; absent characters are rendered as a visible question mark.\n'
         '#pragma once\n#include <stdbool.h>\n#include <stdint.h>\n'
         'static inline bool music_font_supported(uint32_t cp) {\n'
@@ -110,9 +113,10 @@ const lv_font_t music_font_16 = {
         'return lo==sizeof(missing)/sizeof(missing[0]) || missing[lo]!=cp;\n}\n', encoding='utf-8')
     print(f'Font: {len(chars)} glyphs, {len(bitmap)} bitmap bytes; {len(missing)} unavailable requested codepoints')
 
-def check():
-    inv = json.loads(INVENTORY.read_text())
-    assert hashlib.sha256(OUTPUT.read_bytes()).hexdigest() == inv['generated_sha256']
+def check(size=16):
+    output = OUTPUT if size == 16 else FONT.with_name(f'music_font_{size}.c')
+    inv = json.loads((INVENTORY if size == 16 else FONT.with_name(f'music_font_{size}_inventory.json')).read_text())
+    assert hashlib.sha256(output.read_bytes()).hexdigest() == inv['generated_sha256']
     supported = set(inv['codepoints'])
     # Only actual string literals, excluding source comments/identifiers.
     import re
@@ -129,5 +133,7 @@ def check():
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(); ap.add_argument('--check', action='store_true')
-    if ap.parse_args().check: check()
-    else: generate(); check()
+    ap.add_argument('--size', type=int, choices=(16,20), default=16)
+    args=ap.parse_args()
+    if args.check: check(args.size)
+    else: generate(args.size); check(args.size)

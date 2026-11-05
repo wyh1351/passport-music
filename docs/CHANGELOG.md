@@ -10,6 +10,14 @@
 > with `CHANGELOG.zh_CN.md`. The entries currently under `Unreleased` are pending
 > review for the next release; they are not a finalized release history.
 
+## Passport Music v1.1.0 (2026-11-06)
+
+- New white-and-red interface with larger song/current-lyric text and scrolling long titles.
+- Choose a headphone cat, dog, rabbit or penguin, or hide the pet. All share playback movement and paused resting behavior.
+- Pet selection survives restart and song changes.
+- Clean up the settings menu and all four detail pages by removing footer save/sync status text; automatic saving remains active.
+- Refresh images, controls and first-use instructions. The existing companion still works.
+
 ## Passport Music v1.0.3 (2026-11-05)
 
 - Remove the author-specific battery mapping from public firmware. Every valid gauge reading from 0% through 100% is displayed unchanged; 98% no longer displays 100%.

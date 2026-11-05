@@ -7,6 +7,30 @@ int main(void) {
     assert(!music_brightness_valid(0) && !music_brightness_valid(101) && !music_brightness_valid(76));
     assert(music_screen_seconds_valid(0) && music_screen_seconds_valid(15) && music_screen_seconds_valid(600));
     assert(!music_screen_seconds_valid(-1) && !music_screen_seconds_valid(45));
+    for (int pet=0;pet<MUSIC_PET_COUNT;pet++) assert(music_pet_valid(pet));
+    assert(!music_pet_valid(-1) && !music_pet_valid(MUSIC_PET_COUNT));
+    music_state_t pet={.settings_page=true,.settings_edit=true,.setting=MUSIC_SETTING_PET,
+        .pet=MUSIC_PET_CAT,.lyric_offset_ms=350,.brightness=75,.screen_seconds=60};
+    for (int i=1;i<=MUSIC_PET_COUNT;i++) {
+        assert(music_settings_input(&pet,1,false,false)==MUSIC_PREF_CHANGED);
+        assert((int)pet.pet==i%MUSIC_PET_COUNT);
+    }
+    assert(music_settings_input(&pet,0,true,false)==MUSIC_PREF_CHANGED && pet.pet==MUSIC_PET_NONE);
+    assert(pet.lyric_offset_ms==350 && pet.brightness==75 && pet.screen_seconds==60);
+    // Incoming song snapshots must never overwrite the user's pet or old settings.
+    for (int i=0;i<120;i++) {
+        music_state_t incoming={.position=i*1000,.playing=true,.pet=MUSIC_PET_CAT};
+        music_preferences_copy(&incoming,&pet);
+        assert(incoming.position==i*1000 && incoming.playing);
+        assert(incoming.pet==MUSIC_PET_NONE && incoming.setting==MUSIC_SETTING_PET && incoming.settings_edit);
+        assert(incoming.lyric_offset_ms==350 && incoming.brightness==75 && incoming.screen_seconds==60);
+    }
+    assert(music_settings_input(&pet,2,false,false)==MUSIC_PREF_SAVE && !pet.settings_edit && pet.settings_page);
+    assert(music_settings_input(&pet,2,true,false)==MUSIC_PREF_SAVE && !pet.settings_page);
+    pet=(music_state_t){.settings_page=true,.setting=MUSIC_SETTING_BRIGHTNESS};
+    music_settings_input(&pet,1,false,false);assert(pet.setting==MUSIC_SETTING_PET);
+    music_settings_input(&pet,1,false,false);assert(pet.setting==MUSIC_SETTING_OFFSET);
+    music_settings_input(&pet,0,false,false);assert(pet.setting==MUSIC_SETTING_PET);
     // Every detail uses the same return/exit rules and preserves all preferences.
     for (int setting=0;setting<MUSIC_SETTING_COUNT;++setting) {
         music_state_t item={.settings_page=true,.setting=(music_setting_t)setting,
