@@ -10,6 +10,12 @@
 > with `CHANGELOG.zh_CN.md`. The entries currently under `Unreleased` are pending
 > review for the next release; they are not a finalized release history.
 
+## Passport Music v1.0.3 (2026-11-05)
+
+- Remove the author-specific battery mapping from public firmware. Every valid gauge reading from 0% through 100% is displayed unchanged; 98% no longer displays 100%.
+- Retain the unavailable-reading indicator and existing IPv4 lyrics, Japanese/Korean text, controls and settings. Charge control, gauge parameters and NVS format are unchanged.
+- Update bilingual documentation and remove the 98% full-reference constant from public source. The companion executable is unchanged.
+
 ## Passport Music v1.0.2 (2026-11-05)
 
 - Add Japanese hiragana/katakana and modern Korean song text, fixing question marks in titles, artists and lyrics. The33,664-glyph font includes all11,172 modern Hangul syllables.
