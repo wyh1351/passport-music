@@ -10,22 +10,11 @@ Keep each asset in the matching subdirectory and document its destination, namin
 
 ## Fonts
 
-Passport Music includes `fonts/NotoSansSC-Regular.ttf` (Google Fonts Noto Sans SC
-variable font, [upstream](https://github.com/google/fonts/tree/main/ofl/notosanssc),
-SIL OFL 1.1 in `fonts/OFL.txt`). `tools/generate_music_font.py` (Pillow 13.0.0,
-fonttools 4.68.0) emits `fonts/music_font_16.c`, inventory JSON and coverage header.
-It rasterizes 16 px at 2 bpp, plain uncompressed LVGL format, 22 px line pitch.
-The inventory records source/output SHA-256, 21,937 code points, 1,119 unavailable
-requested points and 1,331,900 bitmap bytes. Coverage includes ASCII, extended
-Latin, printable general punctuation, available currency/math/arrow/enclosed/
-geometric/music symbols, CJK punctuation, U+4E00-U+9FEF and available full-width
-forms. Exact ranges, unavailable/control points and Unicode version are in the
-inventory. U+30FB is included explicitly. Two absent mathematical dot glyphs
-(U+2219/U+22C5) reuse the U+00B7 bitmap while preserving original Unicode text.
-`main/CMakeLists.txt` compiles the const font into Flash; all music labels select
-it explicitly. `tools/check_music_font.py` checks fixed UI/common-symbol coverage,
-actual font cmap ordering and coverage-header consistency. Unsupported
-characters become `?`; see [application details](../docs/netease-music.md).
+Passport Music includes `fonts/NotoSansSC-Regular.ttf` (Google Fonts Noto Sans SC variable font, [upstream](https://github.com/google/fonts/tree/main/ofl/notosanssc), SIL OFL 1.1 in `fonts/OFL.txt`) and `fonts/NotoSansKR-Regular.ttf` ([pinned Google Fonts source](https://github.com/google/fonts/tree/4efc2774c63917927efe769ca845def6bd6debae/ofl/notosanskr), SIL OFL 1.1 in `fonts/OFL-NotoSansKR.txt`). Korean syllables/jamo use KR glyphs; existing Chinese/Latin and Japanese kana use SC glyphs. The generator preserves the existing Chinese glyphs and symbol aliases.
+
+`tools/generate_music_font.py` (Pillow 13.0.0, fonttools 4.68.0) emits the static LVGL font, inventory and coverage header: 16 px, 2 bpp, uncompressed, 22 px line pitch; 33,664 code points, 1,123 unavailable requested points and 1,971,224 bitmap bytes. Coverage includes U+4E00-U+9FEF, ASCII/extended Latin and existing symbols, hiragana/katakana and phonetic extensions, all 11,172 modern Hangul syllables (U+AC00-U+D7A3), jamo/compatibility jamo and available half-width forms. The inventory records source/generated SHA-256, exact ranges and missing points. U+2219/U+22C5 retain their middle-dot bitmap aliases.
+
+`main/CMakeLists.txt` compiles the const font into Flash; all music labels select it. The dependency-free coverage gate checks source hashes, actual cmap, fixed strings, Japanese and complete modern Korean coverage. Unsupported scripts/emoji/rare ideographs still become `?`. NFC normalization in the PC bridge composes canonical kana/Hangul before byte truncation; this does not claim arbitrary script shaping. See [application details](../docs/netease-music.md).
 
 Store reusable font files and generated font sources in `fonts/`.
 

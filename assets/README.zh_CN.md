@@ -8,20 +8,11 @@
 
 ## 字库（fonts）
 
-Passport Music 包含 `fonts/NotoSansSC-Regular.ttf`（Google Fonts Noto Sans SC
-可变字体，[上游](https://github.com/google/fonts/tree/main/ofl/notosanssc)，
-SIL OFL 1.1 见 `fonts/OFL.txt`）。`tools/generate_music_font.py` 使用 Pillow 13.0.0、
-fonttools 4.68.0，生成 `fonts/music_font_16.c`、字符清单 JSON 及覆盖头文件。
-16 像素、2bpp、LVGL 无压缩格式，行距 22 像素；清单记录源/输出 SHA-256、21,937
-个字符、1,119 个不支持的请求码点及 1,331,900 字节位图。新增扩展西文、可打印通用
-标点、源字体具备的货币/数学/箭头/圈号/几何/音乐符号；保留中日韩标点、
-U+4E00–U+9FEF 及可用全角字符。具体范围、缺字/控制字符和 Unicode 版本见清单。
-显式加入 U+30FB；源字体缺少的数学点 U+2219/U+22C5 借用 U+00B7 位图，
-原始文本码点不变。
-`main/CMakeLists.txt` 将 const 字库编译入 Flash，所有音乐文字控件显式使用它。
-`tools/check_music_font.py` 检查固定文案/常用符号覆盖、实际字库 cmap 顺序及覆盖头文件一致性。
-不支持的字符仍显示 `?`，详见
-[应用说明](../docs/netease-music.zh_CN.md)。
+Passport Music 包含 `fonts/NotoSansSC-Regular.ttf`（Google Fonts Noto Sans SC 可变字体，[上游](https://github.com/google/fonts/tree/main/ofl/notosanssc)，SIL OFL 1.1 见 `fonts/OFL.txt`）和 `fonts/NotoSansKR-Regular.ttf`（[固定 Google Fonts 来源](https://github.com/google/fonts/tree/4efc2774c63917927efe769ca845def6bd6debae/ofl/notosanskr)，SIL OFL 1.1 见 `fonts/OFL-NotoSansKR.txt`）。韩文音节/字母使用 KR 字形，原中文/西文及日文假名使用 SC 字形；保留原中文字形及符号别名。
+
+`tools/generate_music_font.py` 使用 Pillow 13.0.0、fonttools 4.68.0，生成静态 LVGL 字库、清单和覆盖头文件。16像素、2bpp、无压缩、22像素行距；33,664个字符、1,123个不支持的请求码点、1,971,224字节位图。覆盖 U+4E00–U+9FEF、ASCII/扩展西文和原符号，日文平/片假名及语音扩展，全部11,172个现代韩文音节（U+AC00–U+D7A3）、韩文字母/兼容字母及可用半角形式。清单记录源/生成物 SHA-256、精确范围和缺字；U+2219/U+22C5 保留中点位图别名。
+
+`main/CMakeLists.txt` 将 const 字库编译入 Flash，所有音乐文字控件显式使用它。无依赖覆盖门禁检查源哈希、实际 cmap、固定文案及日文/全部现代韩文覆盖。不支持的文字、表情和罕见汉字仍显示 `?`。电脑桥接在按字节截断前做 NFC 规范化，将可组合的假名/韩文转换为预组合字符；不等同于任意语言的复杂排版。详见[应用说明](../docs/netease-music.zh_CN.md)。
 
 可复用的字库文件与生成的字库源码放在 `fonts/`。
 

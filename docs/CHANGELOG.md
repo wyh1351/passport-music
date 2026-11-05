@@ -10,6 +10,13 @@
 > with `CHANGELOG.zh_CN.md`. The entries currently under `Unreleased` are pending
 > review for the next release; they are not a finalized release history.
 
+## Passport Music v1.0.2 (2026-11-05)
+
+- Add Japanese hiragana/katakana and modern Korean song text, fixing question marks in titles, artists and lyrics. The33,664-glyph font includes all11,172 modern Hangul syllables.
+- Update the Windows companion to compose canonically equivalent kana diacritics and Korean characters before transmission. Update the companion as well as the firmware.
+- A settings-preserving v14 upgrade passed user Japanese/Korean display acceptance on the author's device. The complete build gate,62 PC tests, original C/BSP checks and native LVGL host renders passed.
+- Battery mapping and charge control are unchanged; the single-device calibration scope remains documented. Menus remain Chinese. Other uncovered scripts, emoji and rare characters may still show question marks.
+
 ## Passport Music v1.0.1 (2026-11-05)
 
 - Fix Windows lyric requests timing out on an unreachable IPv6 endpoint by preferring IPv4 direct access, then fresh proxy fallback on failure.

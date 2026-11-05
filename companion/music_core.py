@@ -18,7 +18,10 @@ TX = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
 ACTIONS = {"volume_up", "volume_down", "volume_up_20", "volume_down_20", "previous", "next", "toggle", "lyric_previous", "lyric_next", "toggle_desktop_lyrics"}
 
 def utf8_limit(text, limit):
-    return str(text).replace("\x00", "").encode("utf-8")[:limit].decode("utf-8", "ignore")
+    # Static LVGL bitmap fonts do not compose decomposed kana or Hangul jamo.
+    # Compose canonically equivalent text before applying the byte budget.
+    text = unicodedata.normalize("NFC", str(text).replace("\x00", ""))
+    return text.encode("utf-8")[:limit].decode("utf-8", "ignore")
 
 def frame(state):
     state = dict(state, type="state")

@@ -38,6 +38,11 @@ int main(void) {
     char symbols[128];
     const char *sample="A·B •‧∙⋅・ ‘x’ “y” —… ±℃ ♪♫♭♯ café";
     music_text_copy(symbols,sizeof(symbols),sample); assert(!strcmp(symbols,sample));
+    const char *multilingual="中文 English がぱヴヷーㇰ 안녕하세요 한글 ㄱㅎᄀᄂ 힣";
+    char translated[192];
+    music_text_copy(translated,sizeof(translated),multilingual); assert(!strcmp(translated,multilingual));
+    music_text_copy(out,7,"가나다"); assert(!strcmp(out,"가나"));
+    music_text_copy(out,5,"がぱ"); assert(!strcmp(out,"が"));
     music_text_copy(out,5,"A·中"); assert(!strcmp(out,"A·"));
     music_text_copy(out, 5, "中文"); assert(!strcmp(out, "中"));
     music_text_copy(out, sizeof(out), "A\xf0\x9f\x8e\xb5" "中"); assert(!strcmp(out, "A?中"));

@@ -127,6 +127,17 @@ class ProtocolTest(unittest.TestCase):
         state=json.loads(packet[len(PREFIX):]); self.assertEqual(len(state['title'].encode()),192)
         self.assertEqual(len(state['lyric'].encode()),384)
 
+    def test_frame_composes_japanese_and_korean_before_truncation(self):
+        import unicodedata
+        text='がぱヴ・안녕하세요 한글'
+        decomposed=unicodedata.normalize('NFD',text)
+        for key in ('title','artist','album','message','lyric','before','after'):
+            state=json.loads(frame({key:decomposed})[len(PREFIX):])
+            self.assertEqual(state[key],text)
+        state=json.loads(frame(dict(title=unicodedata.normalize('NFD','한'*100)))[len(PREFIX):])
+        self.assertEqual(state['title'],'한'*64)
+        self.assertEqual(len(state['title'].encode('utf-8')),192)
+
 class LyricsTest(unittest.TestCase):
     def test_windows_direct_uses_ipv4_without_native_ipv6_or_stale_proxy(self):
         from unittest.mock import Mock
