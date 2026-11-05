@@ -10,6 +10,11 @@
 > with `CHANGELOG.zh_CN.md`. The entries currently under `Unreleased` are pending
 > review for the next release; they are not a finalized release history.
 
+## Passport Music v1.1.1 (2026-11-06)
+
+- Make generated-font checks portable across Windows CRLF and Git LF checkouts while still rejecting content changes. Emit future generated C with LF and add regression checks.
+- Update download instructions and image version labels. Firmware and companion binaries are identical to v1.1.0.
+
 ## Passport Music v1.1.0 (2026-11-06)
 
 - New white-and-red interface with larger song/current-lyric text and scrolling long titles.

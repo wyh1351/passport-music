@@ -5,7 +5,7 @@
 You need a Windows PC with Bluetooth and the NetEase Cloud Music desktop app. No device Wi-Fi setup is needed. Online lyrics use the PC's internet connection.
 
 First use
-1. Download PassportMusic-Windows-v1.1.0.zip from https://github.com/wyh1351/passport-music/releases/latest and extract it to a permanent folder. Keep the programs and _internal folder together.
+1. Download PassportMusic-Windows-v1.1.1.zip from https://github.com/wyh1351/passport-music/releases/latest and extract it to a permanent folder. Keep the programs and _internal folder together.
 2. Flash this play with the community flasher. For manual flashing, FoloToy-AI-Passport-full.bin starts at 0x0 and may reset old settings and bonds. Never flash an app-only upgrade at 0x0.
 3. Run Enable-Autostart.cmd once for hidden operation after Windows login. Fully exit NetEase, including its tray instance, then run Open-NetEase-Remote.cmd and play a song.
 4. Add a Bluetooth device in Windows Settings, choose Passport Music and enter the six-digit code shown on the device. The song, lyrics and progress appear after connection. Run only one bridge.

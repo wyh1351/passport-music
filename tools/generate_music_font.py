@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Emit verified LVGL PLAIN 2bpp glyphs using Pillow, without Node converters."""
 import argparse
+from music_font_hash import source_digest_matches
 import hashlib
 import json
 from pathlib import Path
@@ -90,7 +91,7 @@ const lv_font_t MUSIC_FONT_NAME = {
     .underline_position=-2, .underline_thickness=1, .dsc=&dsc
 };''')
     generated = '\n'.join(out).replace('MUSIC_FONT_NAME', f'music_font_{size}').replace('MUSIC_LINE_HEIGHT', str(22 if size == 16 else 28)).replace('MUSIC_BASELINE', str(4 if size == 16 else 5))+'\n'
-    output.write_text(generated, encoding='utf-8')
+    output.write_text(generated, encoding='utf-8', newline='\n')
     inventory = dict(font_sha256=hashlib.sha256(FONT.read_bytes()).hexdigest(),
                      font_sources=[dict(file=path.name,sha256=hashlib.sha256(path.read_bytes()).hexdigest())
                                    for path in (FONT,KOREAN_FONT)],
@@ -116,7 +117,7 @@ const lv_font_t MUSIC_FONT_NAME = {
 def check(size=16):
     output = OUTPUT if size == 16 else FONT.with_name(f'music_font_{size}.c')
     inv = json.loads((INVENTORY if size == 16 else FONT.with_name(f'music_font_{size}_inventory.json')).read_text())
-    assert hashlib.sha256(output.read_bytes()).hexdigest() == inv['generated_sha256']
+    assert source_digest_matches(output.read_bytes(), inv['generated_sha256'])
     supported = set(inv['codepoints'])
     # Only actual string literals, excluding source comments/identifiers.
     import re

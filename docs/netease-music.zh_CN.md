@@ -5,7 +5,7 @@
 准备：Windows 电脑、蓝牙、桌面版网易云音乐。设备不用配网，在线歌词需要电脑联网。
 
 第一次使用
-1. 从 https://github.com/wyh1351/passport-music/releases/latest 下载 PassportMusic-Windows-v1.1.0.zip，解压到固定文件夹。保留其中的程序和 _internal 文件夹。
+1. 从 https://github.com/wyh1351/passport-music/releases/latest 下载 PassportMusic-Windows-v1.1.1.zip，解压到固定文件夹。保留其中的程序和 _internal 文件夹。
 2. 用社区刷机工具刷入本玩法的完整固件。自行刷写时，完整文件 FoloToy-AI-Passport-full.bin 写入 0x0；可能清除旧设置和配对。应用升级文件不能写入 0x0。
 3. 双击 Enable-Autostart.cmd，开启登录后后台运行。完全退出网易云（包括右下角托盘），再双击 Open-NetEase-Remote.cmd 打开网易云并播放歌曲。
 4. 打开 Windows 设置 → 蓝牙和设备 → 添加设备 → 蓝牙，选择 Passport Music，输入设备屏幕上的六位码。连上后会显示歌名、歌词和进度。只运行一份桥接。

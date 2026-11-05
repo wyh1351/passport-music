@@ -53,6 +53,7 @@ run_static_checks() {
     PYTHONDONTWRITEBYTECODE=1 python3 tests/test_music_companion.py
     PYTHONDONTWRITEBYTECODE=1 python3 tests/test_ncm_desktop.py
     PYTHONDONTWRITEBYTECODE=1 python3 tests/test_background_music.py
+    PYTHONDONTWRITEBYTECODE=1 python3 tests/test_music_font_hash.py
     PYTHONDONTWRITEBYTECODE=1 python3 tools/check_music_font.py
     "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Icomponents/bsp/src \
         tests/test_bsp_display_rounding.c components/bsp/src/bsp_display_rounding.c \

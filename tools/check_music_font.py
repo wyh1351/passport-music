@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Dependency-free shipped-font coverage gate; generation needs Pillow/fonttools."""
 import hashlib
+from music_font_hash import source_digest_matches
 import json
 from pathlib import Path
 import re
 ROOT = Path(__file__).resolve().parents[1]
 inv=json.loads((ROOT/'assets/fonts/music_font_inventory.json').read_text())
 source=ROOT/'assets/fonts/music_font_16.c'
-assert hashlib.sha256(source.read_bytes()).hexdigest()==inv['generated_sha256']
+assert source_digest_matches(source.read_bytes(),inv['generated_sha256'])
 points=set(inv['codepoints'])
 ui_copy='\n'.join((ROOT/name).read_text(encoding='utf-8') for name in ('main/music_ui.c','main/music_settings.c'))
 for literal in re.findall(r'"([^"\n]*)"',ui_copy):
@@ -37,7 +38,7 @@ large_inv=json.loads((ROOT/'assets/fonts/music_font_20_inventory.json').read_tex
 large=ROOT/'assets/fonts/music_font_20.c'
 assert large_inv['size']==20 and large_inv['codepoints']==inv['codepoints']
 assert large_inv['missing']==inv['missing']
-assert hashlib.sha256(large.read_bytes()).hexdigest()==large_inv['generated_sha256']
+assert source_digest_matches(large.read_bytes(),large_inv['generated_sha256'])
 large_text=large.read_text(encoding='utf-8')
 large_unicode=re.search(r'uint16_t unicode_list\[\] = \{(.*?)\};',large_text,re.S)[1]
 assert [int(x)+0x20 for x in re.findall(r'\d+',large_unicode)]==inv['codepoints']
