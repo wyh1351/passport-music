@@ -1,0 +1,109 @@
+{
+  "format": "LVGL I8 BGRA palette",
+  "width": 240,
+  "height": 320,
+  "pillow": "13.0.0",
+  "images": [
+    {
+      "index": 1,
+      "source": "assets/images/wallpapers/01.jpg",
+      "source_sha256": "9e0558dce3ef95e24b7fe2a780a4032bdec0a89d36cd077b3e68ccf766f9fe9d",
+      "source_size": [
+        972,
+        2103
+      ],
+      "image_bytes": 77824,
+      "image_sha256": "67753c755d07cac96e3e0cd8a87ec807ec87e44e5f28d097454ad2538ad4ae6d"
+    },
+    {
+      "index": 2,
+      "source": "assets/images/wallpapers/02.jpg",
+      "source_sha256": "982f7f67931ce0ee3bd3b8ae75e287777686034d0c38d46ebb944b7a3e61f51d",
+      "source_size": [
+        972,
+        2106
+      ],
+      "image_bytes": 77824,
+      "image_sha256": "6f57358c965b15a1de2917bd997508cbd5370a28d5fbead072ff62d8f3487780"
+    },
+    {
+      "index": 3,
+      "source": "assets/images/wallpapers/03.jpg",
+      "source_sha256": "e5ac647c3495eec58bad281f52eddc833dc5c29db6701ecac69c12b58947194f",
+      "source_size": [
+        1080,
+        2337
+      ],
+      "image_bytes": 77824,
+      "image_sha256": "567292c31802c2350366021a95a09c5fdfd75955155cc63a95b94b1e0cfd4c1b"
+    },
+    {
+      "index": 4,
+      "source": "assets/images/wallpapers/04.jpg",
+      "source_sha256": "a37f15bab68e7fa94f36a3d28b09a7e012befe304fcd1dda644553717e24cc0a",
+      "source_size": [
+        972,
+        2103
+      ],
+      "image_bytes": 77824,
+      "image_sha256": "d91d24ad65d5ace442a4246052ee59992319d1a2d6e03f2be080e4f0786c6fe6"
+    },
+    {
+      "index": 5,
+      "source": "assets/images/wallpapers/05.jpg",
+      "source_sha256": "d0055e4815a82938704bf7d09822f03173e418c207c0349be4355a9556b55da8",
+      "source_size": [
+        972,
+        2106
+      ],
+      "image_bytes": 77824,
+      "image_sha256": "a95ddbeb563df501508ec9d036bcb5a6f89104943df48316f15fc02c7efceb68"
+    },
+    {
+      "index": 6,
+      "source": "assets/images/wallpapers/06.jpg",
+      "source_sha256": "87cec8ae7e1102c1e538da06a3e5ec4239d51e46cc487257a76a46ef9e0c34fa",
+      "source_size": [
+        972,
+        2103
+      ],
+      "image_bytes": 77824,
+      "image_sha256": "af2c8f80ea8ea028bf9de4a0fa398e4c29749402ea0e889012ff7f3ad7a5c9f2"
+    },
+    {
+      "index": 7,
+      "source": "assets/images/wallpapers/07.jpg",
+      "source_sha256": "367b2a279b86d4a0f409fc909e562688d67c960dc40df64bb846a30d350a7501",
+      "source_size": [
+        972,
+        2103
+      ],
+      "image_bytes": 77824,
+      "image_sha256": "f5f57312222f8b06c9bf077f07dbac5134771b4978eafbaebe3f43746c404ff9"
+    },
+    {
+      "index": 8,
+      "source": "assets/images/wallpapers/08.jpg",
+      "source_sha256": "3581c46b71848e2097b9a76bd5e32fc1bc3e2eaf7f3f6436efd38a2e5b77e6db",
+      "source_size": [
+        1080,
+        2340
+      ],
+      "image_bytes": 77824,
+      "image_sha256": "8a8d4ab249c69847ea65c1fbe3c916fd80542b79b42ac2a93b3ec702dc1ad3de"
+    },
+    {
+      "index": 9,
+      "source": "assets/images/wallpapers/09.jpg",
+      "source_sha256": "865ed35fab186d47b47bac6f7b6c657747f2d172c39dff81a5dd337b04e550cf",
+      "source_size": [
+        972,
+        2106
+      ],
+      "image_bytes": 77824,
+      "image_sha256": "5190c9154a1d4d53ec689f4ab9a6cacb0b5aff1df385573422467921aaf0bceb"
+    }
+  ],
+  "total_image_bytes": 700416,
+  "generated_sha256": "7cf8ea33f2d51c37eb98cb3bee6eb04262e2041dc4362bb184566ce45db33764"
+}

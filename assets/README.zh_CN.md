@@ -33,7 +33,7 @@ Passport Music 包含 `fonts/NotoSansSC-Regular.ttf`（Google Fonts Noto Sans SC
 | [`images/logo-wordmark-dark.png`](images/logo-wordmark-dark.png) | 1648 × 336，PNG RGBA | 提取字标的白色版本；README 使用 `<picture>` 在 GitHub 深色主题下显示。 |
 
 - 使用描述性命名，并记录尺寸、像素格式、转换步骤与目标路径。
-- 优先采用适合 240 × 320 RGB565 显示的格式，并纳入 Flash 与内部 RAM 考量。
+- 优先采用适合 240 × 320 ARGB8888 显示的格式，并纳入 Flash 与内部 RAM 考量。
 - 许可允许时保留可编辑源文件，并记录来源与许可。
 - 图片中不得包含设备二维码秘密、凭证或个人数据。
 
@@ -71,7 +71,7 @@ BSP 在 `components/bsp/src/bsp_battery.c` 中嵌入这 80 字节，主机检查
 
 原创逐像素耳机猫：`images/music-cat-play.svg`、`images/music-cat-rest.svg`，
 采用仓库 MIT 许可。运行 `python tools/generate_music_cat.py`（Pillow13.0.0）
-生成 `images/music_cat.c` 两张40x40 RGB565 帧。
+生成 `images/music_cat.c` 两张40x40 ARGB8888 帧。
 运行 `python tools/generate_music_font.py --size 20` 生成20px 字体
 `fonts/music_font_20.c` 与清单 `fonts/music_font_20_inventory.json`。
 字体沿用原 SC/KR 来源及 OFL 许可，覆盖范围与16px完全一致；门禁校验两种尺寸哈希。
@@ -80,9 +80,13 @@ BSP 在 `components/bsp/src/bsp_battery.c` 中嵌入这 80 字节，主机检查
 
 `images/music-dog-*.svg`、`images/music-rabbit-*.svg`、`images/music-penguin-*.svg`
 是原创整数网格素材，采用仓库 MIT 许可。现有 `generate_music_cat.py` 将四种动物
-播放/休息帧统一生成到 `images/music_cat.c`，八张40x40 RGB565，共25600字节。
+播放/休息帧统一生成到 `images/music_cat.c`，八张40x40 ARGB8888，共51200字节。
 全部共用同一姿态函数和位置。
 
 ## 发布界面图片
 
 `../docs/images/passport-music-*.png` 使用本应用原生界面渲染和原创像素宠物排版。歌名、歌词为演示内容，不是实时歌曲或设备照片。设置底部刻意留白，未经作者明确同意，不新增底部提示或状态文字。
+
+## 可选静态背景
+
+`images/wallpapers/01.jpg` 至 `09.jpg` 是作者提交的九张像素风图片；原作者及授权未提供，不属于本项目原创 MIT 美术素材。本次由提交者提供并要求随玩法公开发布；保留原作者权利，不宣称这些背景图属于项目 MIT 许可。运行 `python tools/generate_music_wallpapers.py`（Pillow13.0.0）等比缩放、底部裁切，并生成 `images/music_wallpapers.c`。每张240×320、I8调色板，共700416字节；LVGL按行解码，禁止整帧加载。设置支持原白底及九张图片，选择保存在NVS。

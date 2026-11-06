@@ -4,15 +4,17 @@
 
 把 AI Passport 变成电脑网易云音乐的无线遥控器：抬手看歌名、进度和三行同步歌词，按键调节网易云内部音量、切歌、播放暂停，还能开关电脑桌面歌词。
 
-白底红字，当前歌词一眼看清。耳机猫、小狗、小兔、企鹅任选，播放时轻晃、暂停时闭眼，也可以不显示。
+九款像素背景随心换，播放页和设置页保持一致，也能切回“默认”白底。耳机猫、小狗、小兔、企鹅任选，播放时轻晃、暂停时闭眼，也可以不显示。
 
-歌词快慢、屏幕亮度和自动息屏都能在设备上调整，重启后保留。电脑桥接支持登录后后台运行，日常打开已配置的网易云就能用。
+背景、宠物、歌词快慢、屏幕亮度和自动息屏都能在设备上调整，重启后保留。电脑桥接支持登录后后台运行，日常打开已配置的网易云就能用。
 
 适用 Windows 桌面版网易云音乐，需配套桥接；声音由电脑播放。
 
 <img src="docs/images/passport-music-cover.png" width="480" alt="Passport Music interface">
 
 现版界面渲染，歌曲与歌词为演示内容。
+
+[九款背景](docs/images/passport-music-wallpapers.png) · [四种宠物](docs/images/passport-music-pets.png) · [按键](docs/images/passport-music-controls.png) · [设置](docs/images/passport-music-settings.png)
 
 ## 开始使用
 

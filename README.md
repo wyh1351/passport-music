@@ -4,15 +4,17 @@
 
 Turn AI Passport into a wireless remote for NetEase Cloud Music on your Windows PC. See the song, progress and three synchronized lyric lines. Adjust the player's own volume, change tracks, pause playback and toggle PC desktop lyrics.
 
-A clean white-and-red screen keeps the current lyric easy to read. Choose a headphone cat, dog, rabbit or penguin: each gently moves during playback and rests when paused. You can also hide the pet.
+Choose from nine pixel-art backgrounds shared by playback and settings, or return to the Default white theme. Choose a headphone cat, dog, rabbit or penguin: each gently moves during playback and rests when paused. You can also hide the pet.
 
-Adjust lyric timing, brightness and screen timeout on the device. Your choices survive a restart. The companion can run quietly after Windows login, ready when you open the configured player.
+Adjust the background, pet, lyric timing, brightness and screen timeout on the device. Your choices survive a restart. The companion can run quietly after Windows login, ready when you open the configured player.
 
 Requires the Windows desktop app and companion bridge. Audio plays on your PC.
 
 <img src="docs/images/passport-music-cover.png" width="480" alt="Passport Music interface">
 
 Current interface render with sample song and lyrics.
+
+[Nine backgrounds](docs/images/passport-music-wallpapers.png) · [Four pets](docs/images/passport-music-pets.png) · [Controls](docs/images/passport-music-controls.png) · [Settings](docs/images/passport-music-settings.png)
 
 ## Get started
 

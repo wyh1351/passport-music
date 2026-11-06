@@ -5,7 +5,7 @@
 #define MUSIC_FRAME_MAX 4096
 #define MUSIC_OFFSET_LIMIT_MS 2000
 typedef enum { MUSIC_SAVE_OK, MUSIC_SAVE_PENDING, MUSIC_SAVE_ERROR } music_save_status_t;
-typedef enum { MUSIC_SETTING_OFFSET, MUSIC_SETTING_SCREEN, MUSIC_SETTING_BRIGHTNESS, MUSIC_SETTING_PET, MUSIC_SETTING_COUNT } music_setting_t;
+typedef enum { MUSIC_SETTING_OFFSET, MUSIC_SETTING_SCREEN, MUSIC_SETTING_BRIGHTNESS, MUSIC_SETTING_PET, MUSIC_SETTING_WALLPAPER, MUSIC_SETTING_COUNT } music_setting_t;
 typedef enum { MUSIC_PET_CAT, MUSIC_PET_DOG, MUSIC_PET_RABBIT, MUSIC_PET_PENGUIN, MUSIC_PET_NONE, MUSIC_PET_COUNT } music_pet_t;
 typedef struct {
     char title[193], artist[193], album[193];
@@ -18,6 +18,7 @@ typedef struct {
     music_setting_t setting;
     int brightness, screen_seconds;
     music_pet_t pet;
+    int wallpaper; // 0: original white; 1..9: built-in static images.
     music_save_status_t save_status;
 } music_state_t;
 typedef struct { size_t used; bool dropping; } music_framer_t;

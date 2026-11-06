@@ -35,7 +35,7 @@ Store reusable source images and generated display assets in `images/`.
 | [`images/logo-wordmark-dark.png`](images/logo-wordmark-dark.png) | 1648 × 336, PNG RGBA | White version of the extracted wordmark, used by the README `<picture>` element when GitHub is in dark mode. |
 
 - Use descriptive names and document dimensions, pixel format, conversion steps, and destination.
-- Prefer formats suitable for the 240 × 320 RGB565 display and account for Flash and internal RAM.
+- Prefer formats suitable for the 240 × 320 ARGB8888 display and account for Flash and internal RAM.
 - Preserve editable sources where licensing permits, and record the source and license.
 - Never commit device QR secrets, credentials, or personal data in images.
 
@@ -75,7 +75,7 @@ for every 500 mAh cell; see the [hardware guide](../docs/hardware-design/AI_HARD
 
 Original code-drawn pixel-cat artwork: `images/music-cat-play.svg` and
 `images/music-cat-rest.svg`, under the repository MIT license. Regenerate the
-two40x40 RGB565 frames in `images/music_cat.c` with
+two40x40 ARGB8888 frames in `images/music_cat.c` with
 `python tools/generate_music_cat.py` (Pillow13.0.0).
 `python tools/generate_music_font.py --size 20` for `fonts/music_font_20.c`
 and `fonts/music_font_20_inventory.json`. The20px font shares the same licensed
@@ -86,9 +86,13 @@ SC/KR sources and exact coverage as16px. Gate hashes validate both sizes.
 `images/music-dog-*.svg`, `images/music-rabbit-*.svg` and
 `images/music-penguin-*.svg` are original integer-grid artwork under the
 repository MIT license. The existing `generate_music_cat.py` emits all four
-animals' play/rest frames into `images/music_cat.c`: eight40x40 RGB565 frames,
-25600 bytes total. All animations use the same pose function and position.
+animals' play/rest frames into `images/music_cat.c`: eight40x40 ARGB8888 frames,
+51200 bytes total. All animations use the same pose function and position.
 
 ## Release interface images
 
 `../docs/images/passport-music-*.png` compose this application's native interface renders and original pixel pets. Song/lyrics are sample content, not live telemetry or device photographs. Settings footers are intentionally blank; new footer hints or status text require the creator's explicit approval.
+
+## Selectable static wallpapers
+
+`images/wallpapers/01.jpg` through `09.jpg` are nine pixel-art images supplied by the creator. Original authors and licenses were not provided; these are not original MIT artwork. The submitting creator supplied these images and requested their inclusion in this public release. Original creators retain their rights; no MIT license grant is claimed for these backgrounds. Run `python tools/generate_music_wallpapers.py` (Pillow13.0.0) for aspect-preserving scaling, bottom cropping and `images/music_wallpapers.c`. Each is240x320 I8; all nine use700416 bytes. LVGL decodes one row at a time; full-frame RAM loading is forbidden. Settings support the original white background plus all nine images and persist the choice in NVS.

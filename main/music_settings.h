@@ -5,6 +5,9 @@ enum { MUSIC_PREF_CHANGED=1, MUSIC_PREF_SAVE=2 };
 bool music_brightness_valid(int percent);
 bool music_screen_seconds_valid(int seconds);
 int music_screen_option(int seconds);
+enum { MUSIC_WALLPAPER_COUNT=10 };
+bool music_wallpaper_valid(int wallpaper);
+const char *music_wallpaper_name(int wallpaper);
 bool music_pet_valid(int pet);
 const char *music_pet_name(int pet);
 // Keep device-owned preferences when replacing the incoming music snapshot.

@@ -10,6 +10,13 @@
 > with `CHANGELOG.zh_CN.md`. The entries currently under `Unreleased` are pending
 > review for the next release; they are not a finalized release history.
 
+## Passport Music v1.2.0 (2026-11-06)
+
+- Added Interface Background: nine pixel-art landscapes plus the Default white theme, with instant preview and automatic saving.
+- The selected background now appears on playback, the settings menu and every detail page, with light text and translucent menu rows for readability.
+- All four pets blend into the background while retaining their position, behavior and selection controls.
+- Updated project images and instructions. Existing working PC companion installations do not need an update.
+
 ## Passport Music v1.1.1 (2026-11-06)
 
 - Make generated-font checks portable across Windows CRLF and Git LF checkouts while still rejecting content changes. Emit future generated C with LF and add regression checks.

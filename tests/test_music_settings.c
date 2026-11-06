@@ -29,8 +29,9 @@ int main(void) {
     assert(music_settings_input(&pet,2,true,false)==MUSIC_PREF_SAVE && !pet.settings_page);
     pet=(music_state_t){.settings_page=true,.setting=MUSIC_SETTING_BRIGHTNESS};
     music_settings_input(&pet,1,false,false);assert(pet.setting==MUSIC_SETTING_PET);
+    music_settings_input(&pet,1,false,false);assert(pet.setting==MUSIC_SETTING_WALLPAPER);
     music_settings_input(&pet,1,false,false);assert(pet.setting==MUSIC_SETTING_OFFSET);
-    music_settings_input(&pet,0,false,false);assert(pet.setting==MUSIC_SETTING_PET);
+    music_settings_input(&pet,0,false,false);assert(pet.setting==MUSIC_SETTING_WALLPAPER);
     // Every detail uses the same return/exit rules and preserves all preferences.
     for (int setting=0;setting<MUSIC_SETTING_COUNT;++setting) {
         music_state_t item={.settings_page=true,.setting=(music_setting_t)setting,
@@ -79,6 +80,23 @@ int main(void) {
     s.settings_page=true;s.setting=MUSIC_SETTING_OFFSET;s.settings_edit=true;
     assert(music_settings_input(&s,2,false,false)==MUSIC_PREF_SAVE && s.lyric_offset_ms==400);
 
+    // Wallpaper choice wraps in both directions and survives incoming song frames.
+    assert(!music_wallpaper_valid(-1) && !music_wallpaper_valid(MUSIC_WALLPAPER_COUNT));
+    music_state_t wall={.settings_page=true,.settings_edit=true,.setting=MUSIC_SETTING_WALLPAPER,
+        .pet=MUSIC_PET_PENGUIN,.brightness=70,.screen_seconds=300,.lyric_offset_ms=150};
+    for (int i=1;i<=MUSIC_WALLPAPER_COUNT;i++) {
+        assert(music_wallpaper_valid(i-1) && music_wallpaper_name(i-1)[0]);
+        assert(music_settings_input(&wall,1,false,false)==MUSIC_PREF_CHANGED);
+        assert(wall.wallpaper==i%MUSIC_WALLPAPER_COUNT);
+    }
+    assert(music_settings_input(&wall,0,true,false)==MUSIC_PREF_CHANGED && wall.wallpaper==9);
+    music_state_t fresh={.playing=true,.position=32100};music_preferences_copy(&fresh,&wall);
+    assert(fresh.wallpaper==9 && fresh.pet==MUSIC_PET_PENGUIN && fresh.position==32100 && fresh.playing);
+    assert(fresh.brightness==70 && fresh.screen_seconds==300 && fresh.lyric_offset_ms==150);
+    assert(music_settings_input(&wall,2,false,false)==MUSIC_PREF_SAVE && !wall.settings_edit && wall.wallpaper==9);
+    assert(music_settings_input(&wall,2,true,false)==MUSIC_PREF_SAVE && !wall.settings_page && wall.wallpaper==9);
+    wall.settings_page=wall.settings_edit=true;wall.wallpaper=999;
+    assert(music_settings_input(&wall,1,false,false)==MUSIC_PREF_CHANGED && wall.wallpaper==1);
     music_screen_t screen={0};
     music_screen_tick(&screen,14999999,15,false); assert(!screen.off);
     music_screen_tick(&screen,15000000,15,false); assert(screen.off);

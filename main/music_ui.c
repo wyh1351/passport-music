@@ -2,6 +2,7 @@
 #include "music_settings.h"
 #include "music_battery.h"
 #include "music_cat.h"
+#include "music_wallpapers.h"
 #include "lvgl.h"
 #include <stdio.h>
 #include <string.h>
@@ -16,6 +17,9 @@ LV_IMAGE_DECLARE(music_rabbit_rest);
 LV_IMAGE_DECLARE(music_penguin_play);
 LV_IMAGE_DECLARE(music_penguin_rest);
 enum { INK=0x191b1f, MUTED=0x616876, RULE=0xdfe2e7, RED=0xe4002b, SOFT=0xfff0f3 };
+static lv_obj_t *background;
+static lv_obj_t *shadow_source[8],*shadow_label[8];
+static int background_id=-1,theme_id=-1;
 static lv_obj_t *status,*battery_label,*title,*artist,*before,*current,*after;
 static lv_obj_t *progress,*elapsed,*duration,*volume,*desktop,*divider,*accent,*cat;
 static lv_obj_t *rows[MUSIC_SETTING_COUNT],*names[MUSIC_SETTING_COUNT],*values[MUSIC_SETTING_COUNT],*detail_hint;
@@ -59,6 +63,7 @@ void music_ui_create(void) {
     lv_obj_t *root=lv_obj_create(NULL); lv_obj_remove_style_all(root);
     lv_obj_set_style_bg_color(root,lv_color_hex(0xffffff),0); lv_obj_set_style_bg_opa(root,LV_OPA_COVER,0);
     lv_obj_set_style_text_font(root,&music_font_16,0); lv_obj_remove_flag(root,LV_OBJ_FLAG_SCROLLABLE);
+    background=lv_image_create(root); lv_obj_set_pos(background,0,0); show(background,false);
     status=label(root,16,12,151,24,RED,&music_font_16);
     battery_label=label(root,174,16,50,20,MUTED,&lv_font_montserrat_14);
     lv_obj_set_style_text_align(battery_label,LV_TEXT_ALIGN_RIGHT,0);
@@ -86,16 +91,24 @@ void music_ui_create(void) {
     desktop=label(root,119,296,105,24,MUTED,&music_font_16);
     lv_obj_set_style_text_align(desktop,LV_TEXT_ALIGN_RIGHT,0);
     for (int i=0;i<MUSIC_SETTING_COUNT;i++) {
-        rows[i]=box(root,12,112+i*39,216,36,0xffffff);
-        names[i]=label(rows[i],10,6,106,24,INK,&music_font_16);
-        values[i]=label(rows[i],116,8,90,24,MUTED,&lv_font_montserrat_14);
+        rows[i]=box(root,12,112+i*33,216,32,0xffffff);
+        names[i]=label(rows[i],10,3,106,24,INK,&music_font_16);
+        values[i]=label(rows[i],116,5,90,24,MUTED,&lv_font_montserrat_14);
         lv_obj_set_style_text_align(values[i],LV_TEXT_ALIGN_RIGHT,0);
-        if (i==MUSIC_SETTING_SCREEN || i==MUSIC_SETTING_PET) lv_obj_set_style_text_font(values[i],&music_font_16,0);
+        if (i==MUSIC_SETTING_SCREEN || i==MUSIC_SETTING_PET || i==MUSIC_SETTING_WALLPAPER) lv_obj_set_style_text_font(values[i],&music_font_16,0);
     }
     detail_hint=label(root,16,126,208,26,MUTED,&music_font_16);
+    lv_obj_t *sources[]={before,current,after,elapsed,duration,volume,desktop,detail_hint};
+    for (unsigned i=0;i<8;i++) {
+        shadow_source[i]=sources[i];
+        shadow_label[i]=label(root,0,0,1,1,0x111b32,lv_obj_get_style_text_font(sources[i],0));
+        lv_obj_set_style_text_opa(shadow_label[i],230,0);
+        lv_obj_move_to_index(shadow_label[i],lv_obj_get_index(sources[i]));
+        show(shadow_label[i],false);
+    }
     music_state_t initial={.desktop_lyrics=-1}; music_ui_update(&initial,-1,1000000); lv_screen_load(root);
 }
-void music_ui_update(const music_state_t *s,int battery_raw,unsigned passkey) {
+static void music_ui_update_content(const music_state_t *s,int battery_raw,unsigned passkey) {
     char b[112]; int battery=music_battery_display_soc(battery_raw);
     if (battery<0) snprintf(b,sizeof(b),"--%%"); else snprintf(b,sizeof(b),"%d%%",battery);
     text(battery_label,b); pet_update(s);
@@ -103,7 +116,7 @@ void music_ui_update(const music_state_t *s,int battery_raw,unsigned passkey) {
     for (int i=0;i<MUSIC_SETTING_COUNT;i++) show(rows[i],menu);
     show(detail_hint,detail);
     show(before,!s->settings_page); show(after,!s->settings_page); show(current,!menu); show(accent,!s->settings_page);
-    show(progress,!menu && !(detail && s->setting==MUSIC_SETTING_PET)); show(elapsed,!s->settings_page); show(duration,!s->settings_page);
+    show(progress,!menu && !(detail && (s->setting==MUSIC_SETTING_PET || s->setting==MUSIC_SETTING_WALLPAPER))); show(elapsed,!s->settings_page); show(duration,!s->settings_page);
     show(volume,!s->settings_page); show(desktop,!s->settings_page);
     lv_obj_set_style_text_align(current,detail?LV_TEXT_ALIGN_CENTER:LV_TEXT_ALIGN_LEFT,0);
     lv_obj_set_pos(current,detail?16:27,detail?174:162); lv_obj_set_width(current,detail?208:197);
@@ -111,20 +124,24 @@ void music_ui_update(const music_state_t *s,int battery_raw,unsigned passkey) {
         text(status,"设备设置");
         if (menu) {
             text(title,"显示与歌词"); text(artist,"歌词、显示与宠物");
-            const char *items[]={"歌词微调","自动息屏","屏幕亮度","屏幕宠物"};
+            const char *items[]={"歌词微调","自动息屏","屏幕亮度","屏幕宠物","界面背景"};
+            bool painted=music_wallpaper_valid(s->wallpaper) && s->wallpaper!=0;
             for (int i=0;i<MUSIC_SETTING_COUNT;i++) {
                 bool selected=(int)s->setting==i;
-                lv_obj_set_style_bg_color(rows[i],lv_color_hex(selected?SOFT:0xffffff),0);
-                lv_obj_set_style_border_color(rows[i],lv_color_hex(selected?RED:RULE),0);
+                lv_obj_set_style_bg_color(rows[i],lv_color_hex(painted?0x111b32:selected?SOFT:0xffffff),0);
+                lv_obj_set_style_bg_opa(rows[i],painted?(selected?150:76):LV_OPA_COVER,0);
+                lv_obj_set_style_border_color(rows[i],lv_color_hex(selected?(painted?0xffe7a0:RED):(painted?0xffffff:RULE)),0);
+                lv_obj_set_style_border_opa(rows[i],painted && !selected?70:LV_OPA_COVER,0);
                 lv_obj_set_style_border_width(rows[i],selected?3:1,0);
                 lv_obj_set_style_border_side(rows[i],selected?LV_BORDER_SIDE_LEFT:LV_BORDER_SIDE_BOTTOM,0);
-                lv_obj_set_style_text_color(names[i],lv_color_hex(selected?RED:INK),0);
-                lv_obj_set_style_text_color(values[i],lv_color_hex(selected?RED:MUTED),0); text(names[i],items[i]);
+                lv_obj_set_style_text_color(names[i],lv_color_hex(selected?(painted?0xffe7a0:RED):(painted?0xeaf1ff:INK)),0);
+                lv_obj_set_style_text_color(values[i],lv_color_hex(selected?(painted?0xffe7a0:RED):(painted?0xeaf1ff:MUTED)),0); text(names[i],items[i]);
             }
             snprintf(b,sizeof(b),"%+d ms",s->lyric_offset_ms); text(values[0],b);
             timeout_text(b,sizeof(b),s->screen_seconds); text(values[1],b);
             snprintf(b,sizeof(b),"%d%%",s->brightness); text(values[2],b);
             text(values[MUSIC_SETTING_PET],music_pet_name(s->pet));
+            text(values[MUSIC_SETTING_WALLPAPER],music_wallpaper_name(s->wallpaper));
             if (!s->connected && passkey<1000000) { snprintf(b,sizeof(b),"配对码：%06u",passkey); text(artist,b); }
             return;
         }
@@ -136,6 +153,9 @@ void music_ui_update(const music_state_t *s,int battery_raw,unsigned passkey) {
             text(title,"自动息屏"); text(artist,"无按键操作后关闭背光"); text(detail_hint,"播放音乐时同样生效");
             timeout_text(b,sizeof(b),s->screen_seconds); text(current,b);
             lv_bar_set_value(progress,music_screen_option(s->screen_seconds)*1000/6,LV_ANIM_OFF);
+        } else if (s->setting==MUSIC_SETTING_WALLPAPER) {
+            text(title,"界面背景"); text(artist,music_wallpaper_name(s->wallpaper));
+            text(detail_hint,""); text(current,"");
         } else if (s->setting==MUSIC_SETTING_PET) {
             text(title,"屏幕宠物"); text(artist,"歌名旁的像素小伙伴");
             text(detail_hint,"上 / 下选择，自动保存"); text(current,music_pet_name(s->pet));
@@ -161,4 +181,43 @@ void music_ui_update(const music_state_t *s,int battery_raw,unsigned passkey) {
         if (s->volume<0) snprintf(b,sizeof(b),"音量 --"); else snprintf(b,sizeof(b),"音量 %d%%",s->volume);
         text(volume,b); text(desktop,s->desktop_lyrics<0?"":s->desktop_lyrics?"桌面歌词 开":"桌面歌词 关");
     } else { text(volume,""); text(desktop,""); }
+}
+
+// The selected static Flash background is shared by home and all settings pages.
+void music_ui_update(const music_state_t *s,int battery_raw,unsigned passkey) {
+    music_ui_update_content(s,battery_raw,passkey);
+    int id=music_wallpaper_valid(s->wallpaper)?s->wallpaper:0;
+    bool painted=id!=0;
+    if (id!=background_id) {
+        show(background,painted);
+        if (painted) lv_image_set_src(background,music_wallpaper_image(id));
+        background_id=id;
+    }
+    if ((int)painted!=theme_id) {
+        lv_obj_t *items[]={status,battery_label,title,artist,before,current,after,elapsed,duration,volume,desktop,detail_hint};
+        const uint32_t plain[]={RED,MUTED,INK,MUTED,MUTED,RED,MUTED,MUTED,MUTED,INK,MUTED,MUTED};
+        for (unsigned i=0;i<sizeof(items)/sizeof(items[0]);i++) {
+            uint32_t color=painted?(items[i]==current?0xffe7a0:items[i]==title?0xffffff:0xeaf1ff):plain[i];
+            lv_obj_set_style_text_color(items[i],lv_color_hex(color),0);
+        }
+        lv_obj_set_style_bg_color(accent,lv_color_hex(painted?0xffe7a0:RED),0);
+        lv_obj_set_style_bg_color(divider,lv_color_hex(painted?0xffffff:RULE),0);
+        lv_obj_set_style_bg_opa(divider,painted?80:LV_OPA_COVER,0);
+        lv_obj_set_style_bg_color(progress,lv_color_hex(painted?0x29384c:RULE),LV_PART_MAIN);
+        lv_obj_set_style_bg_color(progress,lv_color_hex(painted?0xffe7a0:RED),LV_PART_INDICATOR);
+        theme_id=painted;
+    }
+    for (unsigned i=0;i<8;i++) {
+        lv_obj_t *src=shadow_source[i],*dst=shadow_label[i];
+        bool visible=painted && !lv_obj_has_flag(src,LV_OBJ_FLAG_HIDDEN);
+        show(dst,visible);
+        if (!visible) continue;
+        lv_obj_set_pos(dst,lv_obj_get_x(src)+1,lv_obj_get_y(src)+1);
+        int height=lv_obj_get_height(src);
+        if (lv_obj_get_y(src)+1+height>320) height=320-lv_obj_get_y(src)-1;
+        lv_obj_set_size(dst,lv_obj_get_width(src),height);
+        lv_obj_set_style_text_align(dst,lv_obj_get_style_text_align(src,0),0);
+        lv_obj_set_style_text_line_space(dst,lv_obj_get_style_text_line_space(src,0),0);
+        text(dst,lv_label_get_text(src));
+    }
 }

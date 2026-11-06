@@ -28,6 +28,8 @@ CONFIG_LV_FONT_MONTSERRAT_20=y
 # 本 demo UI 简单,24KB 足够;若自建复杂界面出现绘制卡死/看门狗,调大此值。
 # A1's additional labels/styles and20px lyric rasterization require a32KB pool.
 CONFIG_LV_MEM_SIZE_KILOBYTES=32
+# Decode indexed wallpapers one row at a time, never a full ARGB frame.
+# CONFIG_LV_BIN_DECODER_RAM_LOAD is not set
 
 # --- 系统 ---
 CONFIG_FREERTOS_HZ=1000

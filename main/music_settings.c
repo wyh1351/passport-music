@@ -8,6 +8,11 @@ int music_screen_option(int seconds) {
     return -1;
 }
 bool music_screen_seconds_valid(int seconds) { return music_screen_option(seconds)>=0; }
+bool music_wallpaper_valid(int wallpaper) { return wallpaper>=0 && wallpaper<MUSIC_WALLPAPER_COUNT; }
+const char *music_wallpaper_name(int wallpaper) {
+    static const char *names[]={"默认","蓝天小巷","霓虹夜街","夏日街角","海边小港","向日葵田","晴空老街","河畔散步","白云庭院","暮色雪港"};
+    return names[music_wallpaper_valid(wallpaper)?wallpaper:0];
+}
 bool music_pet_valid(int pet) { return pet>=MUSIC_PET_CAT && pet<MUSIC_PET_COUNT; }
 const char *music_pet_name(int pet) {
     static const char *names[]={"耳机猫","小狗","小兔","企鹅","不显示"};
@@ -17,7 +22,7 @@ void music_preferences_copy(music_state_t *dest,const music_state_t *source) {
     dest->settings_page=source->settings_page; dest->settings_edit=source->settings_edit;
     dest->setting=source->setting; dest->lyric_offset_ms=source->lyric_offset_ms;
     dest->brightness=source->brightness; dest->screen_seconds=source->screen_seconds;
-    dest->pet=source->pet; dest->save_status=source->save_status;
+    dest->pet=source->pet; dest->wallpaper=source->wallpaper; dest->save_status=source->save_status;
 }
 unsigned music_settings_input(music_state_t *s, int key, bool held, bool twice) {
     if (!s->settings_page || key<0 || key>2) return 0;
@@ -31,6 +36,12 @@ unsigned music_settings_input(music_state_t *s, int key, bool held, bool twice) 
         return 0;
     }
     if (key==2) { s->settings_edit=false; return MUSIC_PREF_SAVE; }
+    if (s->setting==MUSIC_SETTING_WALLPAPER) {
+        int previous=s->wallpaper;
+        int selected=music_wallpaper_valid(previous)?previous:0;
+        s->wallpaper=(selected+(key==0?MUSIC_WALLPAPER_COUNT-1:1))%MUSIC_WALLPAPER_COUNT;
+        return s->wallpaper!=previous?MUSIC_PREF_CHANGED:0;
+    }
     if (s->setting==MUSIC_SETTING_PET) {
         int previous=s->pet;
         int pet=music_pet_valid(previous)?previous:MUSIC_PET_CAT;
