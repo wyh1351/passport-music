@@ -10,6 +10,11 @@
 > with `CHANGELOG.zh_CN.md`. The entries currently under `Unreleased` are pending
 > review for the next release; they are not a finalized release history.
 
+## Windows bridge v1.2.1 (2026-11-07)
+
+- Add per-user recovery when the background supervisor exits. Enable-Autostart.cmd registers a one-minute recovery task, and the stop and disable commands respect a manual pause.
+- Record supervisor exceptions and manual stops in the background log.
+
 ## Passport Music v1.2.0 (2026-11-06)
 
 - Added Interface Background: nine pixel-art landscapes plus the Default white theme, with instant preview and automatic saving.

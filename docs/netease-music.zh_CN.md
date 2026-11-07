@@ -5,9 +5,9 @@
 准备：Windows 电脑、蓝牙、桌面版网易云音乐。设备不用配网，在线歌词需要电脑联网。
 
 第一次使用
-1. 从 https://github.com/wyh1351/passport-music/releases/latest 下载 PassportMusic-Windows-v1.2.0.zip，解压到固定文件夹。保留其中的程序和 _internal 文件夹。
+1. 下载 [PassportMusic-Windows-v1.2.1.zip](https://github.com/wyh1351/passport-music/releases/download/bridge-v1.2.1/PassportMusic-Windows-v1.2.1.zip) 并解压到固定文件夹。保留程序及 `_internal`、`_background` 文件夹。
 2. 用社区刷机工具刷入本玩法的完整固件。自行刷写时，完整文件 FoloToy-AI-Passport-full.bin 写入 0x0；可能清除旧设置和配对。应用升级文件不能写入 0x0。
-3. 双击 Enable-Autostart.cmd，开启登录后后台运行。完全退出网易云（包括右下角托盘），再双击 Open-NetEase-Remote.cmd 打开网易云并播放歌曲。
+3. 双击 Enable-Autostart.cmd，启用登录自启和后台恢复。桥接意外退出时，Windows 计划任务每分钟检查并重新启动它。完全退出网易云（包括右下角托盘），再双击 Open-NetEase-Remote.cmd 打开网易云并播放歌曲。
 4. 打开 Windows 设置 → 蓝牙和设备 → 添加设备 → 蓝牙，选择 Passport Music，输入设备屏幕上的六位码。连上后会显示歌名、歌词和进度。只运行一份桥接。
 
 主页按键
@@ -35,6 +35,6 @@
 - 没连上：保持设备开机、电脑蓝牙开启，后台会重试；重刷后有时要等待重连。用 Background-Status.cmd 查看后台状态，Stop-Background.cmd 停止后台，Disable-Autostart.cmd 关闭自启。
 - 歌词不出现：检查电脑网络，切一首歌重试。也可在桥接的 lyrics 文件夹放入 UTF-8、带时间标签的“歌名 - 歌手.lrc”，重启桥接；文件名中的 Windows 非法字符换成下划线。
 
-已有用户：可正常使用的电脑桥接无需因本次固件升级而替换。兼容分区的旧固件可将本包应用升级文件写入 0x10000 保留设置，不全片擦除；不确定时使用社区完整刷写并重新配对。
+已有用户可将新桥接包解压到新文件夹，运行其中的 Enable-Autostart.cmd 更新现有安装并启用恢复。Stop-Background.cmd 会暂停后台至下次登录或重新启用，Disable-Autostart.cmd 会关闭自启并移除恢复任务。此次仅升级电脑桥接，可继续使用现有固件和配对。
 
 已验证网易云 3.1.31.205174，其他版本或更新后可能需要适配。支持中文、西文、日文假名和现代韩文；菜单为中文，其他文字和表情可能无法显示。配图为现版界面渲染，歌曲及歌词是演示内容。

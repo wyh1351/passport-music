@@ -13,10 +13,13 @@ import sys
 import threading
 import time
 
+from background_task import configure_recovery_task
+
 RUN_KEY = r'Software\Microsoft\Windows\CurrentVersion\Run'
 RUN_NAME = 'FoloToyPassportMusic'
 LAUNCHER = 'PassportMusicBackground.exe'
 BRIDGE = 'PassportMusic.exe'
+PAUSE_FILE = 'background-paused'
 
 def decode_bridge_line(line, fallback=None):
     try: return line.decode('utf-8')
@@ -83,8 +86,30 @@ def stop(root):
             if parent: parent.wait(timeout=5)
 
 def spawn(root):
-    return subprocess.Popen([str(root / LAUNCHER), '--background'], cwd=root,
+    process = subprocess.Popen([str(root / LAUNCHER), '--background'], cwd=root,
         creationflags=subprocess.CREATE_NO_WINDOW)
+    state_path = root / 'background-state.json'
+    deadline = time.monotonic() + 8
+    while time.monotonic() < deadline and process.poll() is None:
+        try:
+            state = json.loads(state_path.read_text(encoding='utf-8'))
+            if state.get('supervisor') == process.pid and type(state.get('bridge')) is int:
+                return
+        except (OSError, ValueError, AttributeError):
+            pass
+        time.sleep(0.1)
+    if process.poll() is None:
+        process.terminate()
+    raise RuntimeError('后台未完成启动，请查看 logs/background.log')
+
+def recovery_enabled(root):
+    return registered() == run_command(root) and not (root / PAUSE_FILE).exists()
+
+def request_stop(root):
+    if root.is_dir():
+        (root / PAUSE_FILE).touch()
+        setup_logger(root).info('Background stop requested')
+    stop(root)
 
 def install(source, start=True, destination=None):
     destination = Path(destination).resolve() if destination is not None else install_root()
@@ -94,12 +119,18 @@ def install(source, start=True, destination=None):
     previous = registered()
     if previous not in (None, run_command(destination)):
         raise RuntimeError('A different Passport autostart entry exists; it was preserved')
-    stop(destination)
+    request_stop(destination)
     if source.resolve() != destination.resolve():
         shutil.copytree(source, destination, dirs_exist_ok=True,
-            ignore=shutil.ignore_patterns('logs', '*-state.json', '*.pid'))
+            ignore=shutil.ignore_patterns('logs', '*-state.json', '*.pid', PAUSE_FILE))
     set_autostart(destination, True)
-    if start: spawn(destination)
+    if not start:
+        (destination / PAUSE_FILE).touch()
+    try:
+        configure_recovery_task(destination / LAUNCHER, True)
+    finally:
+        if start:
+            spawn(destination)
     return destination
 
 def setup_logger(root):
@@ -112,7 +143,7 @@ def setup_logger(root):
     logger.addHandler(handler)
     return logger
 
-def supervise(root):
+def supervise(root, recover=False):
     api = ctypes.WinDLL('kernel32', use_last_error=True)
     api.CreateMutexW.argtypes = [ctypes.c_void_p, ctypes.c_bool, ctypes.c_wchar_p]
     api.CreateMutexW.restype = ctypes.c_void_p
@@ -124,9 +155,30 @@ def supervise(root):
         api.CloseHandle(handle); return
     logger = setup_logger(root)
     state_path = root / 'background-state.json'
+    child = None
     try:
+        if recover:
+            if not recovery_enabled(root):
+                return
+            logger.info('Background supervisor recovered by scheduled task')
+            # A terminated supervisor can leave its bridge child running.
+            try:
+                old = json.loads(state_path.read_text(encoding='utf-8'))
+                pid = old.get('bridge')
+                orphan = owned_process(pid, root / BRIDGE) if type(pid) is int else None
+                if (orphan and orphan.ppid() == old.get('supervisor') and
+                        orphan.create_time() <= state_path.stat().st_mtime):
+                    orphan.terminate()
+                    orphan.wait(timeout=5)
+                    logger.info('Previous supervisor bridge process reclaimed')
+            except FileNotFoundError:
+                pass
+            except (ValueError, AttributeError):
+                logger.warning('Previous background process record is invalid')
+        else:
+            (root / PAUSE_FILE).unlink(missing_ok=True)
         delay = 5
-        while True:
+        while not (root / PAUSE_FILE).exists():
             env = dict(os.environ, PYTHONIOENCODING='utf-8')
             # No --launch-player. It may connect before or after NetEase opens.
             child = subprocess.Popen([str(root / BRIDGE)], cwd=root, env=env,
@@ -140,11 +192,20 @@ def supervise(root):
             reader = threading.Thread(target=capture, args=(child.stdout,), daemon=True)
             reader.start()
             started = time.monotonic()
+            if (root / PAUSE_FILE).exists():
+                child.terminate()
             code = child.wait(); reader.join(timeout=2); child.stdout.close()
+            if (root / PAUSE_FILE).exists():
+                return
             if time.monotonic()-started > 60: delay = 5
             logger.info('Bridge exited (%s); retry in %s seconds', code, delay)
             time.sleep(delay); delay = min(60, delay*2)
+    except Exception:
+        logger.exception('Background supervisor failed')
+        raise
     finally:
+        if child is not None and child.poll() is None:
+            child.terminate()
         api.CloseHandle(handle)
 
 def notify(message, error=False):
@@ -157,18 +218,24 @@ def main():
         actions.add_argument('--'+action, action='store_true')
     parser.add_argument('--quiet', action='store_true')
     parser.add_argument('--no-start', action='store_true')
+    parser.add_argument('--recover', action='store_true')
     parser.add_argument('--install-dir', type=Path)
     args = parser.parse_args()
     try:
-        if args.background: supervise(own_root()); return
+        if args.background:
+            root = own_root()
+            if not args.recover or recovery_enabled(root):
+                supervise(root, recover=args.recover)
+            return
         if args.install:
             root = install(own_root(), not args.no_start, args.install_dir)
-            message = '已设置登录后后台启动。直接打开网易云即可，桥接不会自动打开网易云。\n安装目录：'+str(root)
+            message = '已启用登录自启和后台恢复。直接打开已配置的网易云即可。\n安装目录：'+str(root)
         elif args.disable:
-            root = install_root(); set_autostart(root, False); stop(root)
+            root = install_root(); set_autostart(root, False); request_stop(root)
+            configure_recovery_task(root / LAUNCHER, False)
             message = '已取消开机自启并停止后台桥接。文件、配对与歌词微调值保留。'
         elif args.stop:
-            stop(install_root()); message = '后台桥接已停止；下次登录仍会自动启动。'
+            request_stop(install_root()); message = '后台桥接已停止；下次登录仍会自动启动。'
         else:
             root = install_root()
             enabled = registered() == run_command(root)
@@ -187,7 +254,8 @@ def main():
                 message += '\n网易云接口检查未完成，请查看日志。'
         if not args.quiet: notify(message)
     except Exception as exc:
-        if not args.quiet: notify('操作失败：'+str(exc), True)
+        if not args.quiet and not args.background:
+            notify('操作失败：'+str(exc), True)
         raise SystemExit(1)
 
 if __name__ == '__main__': main()

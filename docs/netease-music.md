@@ -5,9 +5,9 @@
 You need a Windows PC with Bluetooth and the NetEase Cloud Music desktop app. No device Wi-Fi setup is needed. Online lyrics use the PC's internet connection.
 
 First use
-1. Download PassportMusic-Windows-v1.2.0.zip from https://github.com/wyh1351/passport-music/releases/latest and extract it to a permanent folder. Keep the programs and _internal folder together.
+1. Download [PassportMusic-Windows-v1.2.1.zip](https://github.com/wyh1351/passport-music/releases/download/bridge-v1.2.1/PassportMusic-Windows-v1.2.1.zip) and extract it to a permanent folder. Keep the programs and the `_internal` and `_background` folders together.
 2. Flash this play with the community flasher. For manual flashing, FoloToy-AI-Passport-full.bin starts at 0x0 and may reset old settings and bonds. Never flash an app-only upgrade at 0x0.
-3. Run Enable-Autostart.cmd once for hidden operation after Windows login. Fully exit NetEase, including its tray instance, then run Open-NetEase-Remote.cmd and play a song.
+3. Run Enable-Autostart.cmd to enable logon startup and automatic recovery. A Windows scheduled task checks once a minute and restarts the bridge after an unexpected exit. Fully exit NetEase, including its tray instance, then run Open-NetEase-Remote.cmd and play a song.
 4. Add a Bluetooth device in Windows Settings, choose Passport Music and enter the six-digit code shown on the device. The song, lyrics and progress appear after connection. Run only one bridge.
 
 Home controls
@@ -35,6 +35,6 @@ Troubleshooting
 - No connection: keep the device on and PC Bluetooth enabled. The bridge retries; reconnection after flashing can take time. Background-Status.cmd checks status, Stop-Background.cmd stops the bridge and Disable-Autostart.cmd disables logon startup.
 - No lyrics: check internet access and try another song. You can also place a UTF-8 timed title - artist.lrc file in the bridge's lyrics folder and restart it; replace Windows-invalid filename characters with underscores.
 
-Existing working companion installations do not need an update for this firmware release. A compatible existing partition layout supports an app-only upgrade at 0x10000 without chip erase to retain settings. If unsure, use the community full flash and pair again.
+To upgrade an existing installation, extract the new bridge package to a new folder and run its Enable-Autostart.cmd. Stop-Background.cmd pauses the bridge until the next login or manual re-enable. Disable-Autostart.cmd turns off logon startup and removes the recovery task. This bridge update works with your existing firmware and Bluetooth pairing.
 
 Tested with NetEase 3.1.31.205174. Other or future versions may require adaptation. Chinese/Latin, Japanese kana and modern Korean are supported; menus remain Chinese. Other scripts and emoji may not render. Images are current-interface renders with demonstration song and lyric text.
