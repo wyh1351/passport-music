@@ -7,7 +7,7 @@ import unittest
 from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'companion'))
 from music_core import CommandDecoder, PREFIX, frame, parse_lrc, lyric_window, find_song, load_lyrics, safe_name, http_json
-from passport_music import Bridge, DemoMusic, ble_run, ble_connection_parameters
+from passport_music import Bridge, DemoMusic, ble_run, ble_connection_parameters, select_ble_device, main
 
 class ConnectionParametersTest(unittest.IsolatedAsyncioTestCase):
     async def check_preference(self,unavailable=False):
@@ -30,7 +30,7 @@ class ConnectionParametersTest(unittest.IsolatedAsyncioTestCase):
         await self.check_preference(True)
 
 class WindowsPairingTest(unittest.IsolatedAsyncioTestCase):
-    async def check_pairing(self, paired):
+    async def check_pairing(self, paired, subscribe_error=False):
         import types
         from unittest.mock import AsyncMock, MagicMock
         from music_core import SERVICE
@@ -43,21 +43,32 @@ class WindowsPairingTest(unittest.IsolatedAsyncioTestCase):
         scanner=types.SimpleNamespace(discover=AsyncMock(return_value={'device':(device,adv)}))
         client=MagicMock();client.__aenter__.return_value=client;client.__aexit__.return_value=False
         client.start_notify=AsyncMock()
+        if subscribe_error:
+            client.start_notify.side_effect = OSError('subscribe failed')
         constructor=MagicMock(return_value=client)
         bridge=types.SimpleNamespace(received=MagicMock(),run=AsyncMock())
+        ready = MagicMock()
         modules={
             'bleak':types.SimpleNamespace(BleakClient=constructor,BleakScanner=scanner),
             'winrt.windows.devices.bluetooth':types.SimpleNamespace(BluetoothLEDevice=native_type),
             'winrt.windows.devices.enumeration':types.SimpleNamespace(DeviceInformation=info_type)}
         with patch.dict(sys.modules,modules),patch.object(sys,'platform','win32'):
-            if paired:
-                await ble_run(bridge,types.SimpleNamespace(address=None))
+            if paired and not subscribe_error:
+                await ble_run(bridge,types.SimpleNamespace(address=None),ready)
                 constructor.assert_called_once_with(device,pair=False,timeout=60)
                 bridge.run.assert_awaited_once()
+                ready.assert_called_once()
+                self.assertEqual(bridge.ble_address,device.address)
+            elif paired:
+                with self.assertRaisesRegex(OSError,'subscribe failed'):
+                    await ble_run(bridge,types.SimpleNamespace(address=None),ready)
+                ready.assert_not_called()
+                self.assertFalse(hasattr(bridge,'ble_address'))
             else:
                 with self.assertRaisesRegex(RuntimeError,'Windows 设置'):
                     await ble_run(bridge,types.SimpleNamespace(address=None))
                 constructor.assert_not_called()
+                ready.assert_not_called()
         native.close.assert_called_once()
 
     async def test_unpaired_device_requires_windows_passkey_pairing(self):
@@ -65,6 +76,68 @@ class WindowsPairingTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_bonded_device_never_uses_pinless_auto_pairing(self):
         await self.check_pairing(True)
+
+    async def test_failed_subscription_does_not_mark_the_connection_ready(self):
+        await self.check_pairing(True,subscribe_error=True)
+
+class ReconnectTest(unittest.IsolatedAsyncioTestCase):
+    async def test_known_device_returns_as_soon_as_address_and_service_match(self):
+        import types
+        from unittest.mock import AsyncMock
+        from music_core import SERVICE
+        target=types.SimpleNamespace(address='11:22:33:44:55:66')
+        advertisement=types.SimpleNamespace(service_uuids=[SERVICE.upper()])
+        async def find(predicate,timeout):
+            self.assertEqual(timeout,8)
+            self.assertFalse(predicate(types.SimpleNamespace(address='00:00:00:00:00:00'),advertisement))
+            self.assertFalse(predicate(target,types.SimpleNamespace(service_uuids=[])))
+            self.assertTrue(predicate(target,advertisement))
+            return target
+        scanner=types.SimpleNamespace(find_device_by_filter=AsyncMock(side_effect=find),discover=AsyncMock())
+        with patch.dict(sys.modules,{'bleak':types.SimpleNamespace(BleakScanner=scanner)}):
+            self.assertIs(await select_ble_device(target.address.lower()),target)
+            scanner.discover.assert_not_awaited()
+            scanner.find_device_by_filter.side_effect=None
+            scanner.find_device_by_filter.return_value=None
+            with self.assertRaisesRegex(RuntimeError,'指定 Passport'):
+                await select_ble_device(target.address)
+            scanner.discover.assert_not_awaited()
+
+    async def test_first_scan_still_rejects_multiple_passports(self):
+        import types
+        from unittest.mock import AsyncMock
+        from music_core import SERVICE
+        adv=types.SimpleNamespace(service_uuids=[SERVICE])
+        one=types.SimpleNamespace(address='11:22:33:44:55:66')
+        two=types.SimpleNamespace(address='22:33:44:55:66:77')
+        scanner=types.SimpleNamespace(discover=AsyncMock(return_value={'one':(one,adv),'two':(two,adv)}))
+        with patch.dict(sys.modules,{'bleak':types.SimpleNamespace(BleakScanner=scanner)}):
+            with self.assertRaisesRegex(RuntimeError,'多个设备'):
+                await select_ble_device()
+            scanner.discover.assert_awaited_once_with(timeout=8,return_adv=True)
+
+    async def test_success_resets_accumulated_retry_delay_for_both_transports(self):
+        import types
+        from unittest.mock import AsyncMock
+        for transport in ('ble','usb'):
+            attempts=0
+            delays=[]
+            async def connection(bridge,args,on_connected):
+                nonlocal attempts
+                attempts+=1
+                if attempts==5:
+                    on_connected()
+                raise OSError('simulated disconnect')
+            async def sleep(seconds):
+                delays.append(seconds)
+                if len(delays)==6:
+                    raise asyncio.CancelledError()
+            args=types.SimpleNamespace(debug=False,list_ports=False,scan=False,launch_player=False,
+                demo=True,diagnose_lyrics=False,diagnose=False,transport=transport)
+            with patch('passport_music.ble_run',side_effect=connection),patch('passport_music.usb_run',side_effect=connection),patch('passport_music.asyncio.sleep',side_effect=sleep),patch('builtins.print'):
+                with self.assertRaises(asyncio.CancelledError):
+                    await main(args)
+            self.assertEqual(delays,[2,4,8,15,2,4])
 
 class ProtocolTest(unittest.TestCase):
     def test_large_volume_commands_are_fragment_safe_and_not_replayed(self):

@@ -5,7 +5,7 @@
 准备：Windows 电脑、蓝牙、桌面版网易云音乐。设备不用配网，在线歌词需要电脑联网。
 
 第一次使用
-1. 下载 [PassportMusic-Windows-v1.2.1.zip](https://github.com/wyh1351/passport-music/releases/download/bridge-v1.2.1/PassportMusic-Windows-v1.2.1.zip) 并解压到固定文件夹。保留程序及 `_internal`、`_background` 文件夹。
+1. 下载 [PassportMusic-Windows-v1.2.2.zip](https://github.com/wyh1351/passport-music/releases/download/bridge-v1.2.2/PassportMusic-Windows-v1.2.2.zip) 并解压到固定文件夹。保留程序及 `_internal`、`_background` 文件夹。
 2. 用社区刷机工具刷入本玩法的完整固件。自行刷写时，完整文件 FoloToy-AI-Passport-full.bin 写入 0x0；可能清除旧设置和配对。应用升级文件不能写入 0x0。
 3. 双击 Enable-Autostart.cmd，启用登录自启和后台恢复。桥接意外退出时，Windows 计划任务每分钟检查并重新启动它。完全退出网易云（包括右下角托盘），再双击 Open-NetEase-Remote.cmd 打开网易云并播放歌曲。
 4. 打开 Windows 设置 → 蓝牙和设备 → 添加设备 → 蓝牙，选择 Passport Music，输入设备屏幕上的六位码。连上后会显示歌名、歌词和进度。只运行一份桥接。
@@ -31,6 +31,7 @@
 参数放在原路径引号外；改完后完全退出网易云再重开。任务栏图标可先右键图标，再右键应用名称打开属性。网易云更新或重新固定图标后，可能要重新补参数。
 
 遇到问题
+连接成功后，下一次断线从 2 秒等待开始重试，连续失败时逐步延长至 15 秒。同一次后台运行中会记住已连接的 Passport，重连扫描找到该设备就立即尝试连接。首次运行或重启桥接后会完整扫描约 8 秒，多台设备同时出现时需要指定目标。
 - 音量或进度不动：完全退出网易云，重新用 Open-NetEase-Remote.cmd 打开。
 - 没连上：保持设备开机、电脑蓝牙开启，后台会重试；重刷后有时要等待重连。用 Background-Status.cmd 查看后台状态，Stop-Background.cmd 停止后台，Disable-Autostart.cmd 关闭自启。
 - 歌词不出现：检查电脑网络，切一首歌重试。也可在桥接的 lyrics 文件夹放入 UTF-8、带时间标签的“歌名 - 歌手.lrc”，重启桥接；文件名中的 Windows 非法字符换成下划线。

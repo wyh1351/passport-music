@@ -5,7 +5,7 @@
 You need a Windows PC with Bluetooth and the NetEase Cloud Music desktop app. No device Wi-Fi setup is needed. Online lyrics use the PC's internet connection.
 
 First use
-1. Download [PassportMusic-Windows-v1.2.1.zip](https://github.com/wyh1351/passport-music/releases/download/bridge-v1.2.1/PassportMusic-Windows-v1.2.1.zip) and extract it to a permanent folder. Keep the programs and the `_internal` and `_background` folders together.
+1. Download [PassportMusic-Windows-v1.2.2.zip](https://github.com/wyh1351/passport-music/releases/download/bridge-v1.2.2/PassportMusic-Windows-v1.2.2.zip) and extract it to a permanent folder. Keep the programs and the `_internal` and `_background` folders together.
 2. Flash this play with the community flasher. For manual flashing, FoloToy-AI-Passport-full.bin starts at 0x0 and may reset old settings and bonds. Never flash an app-only upgrade at 0x0.
 3. Run Enable-Autostart.cmd to enable logon startup and automatic recovery. A Windows scheduled task checks once a minute and restarts the bridge after an unexpected exit. Fully exit NetEase, including its tray instance, then run Open-NetEase-Remote.cmd and play a song.
 4. Add a Bluetooth device in Windows Settings, choose Passport Music and enter the six-digit code shown on the device. The song, lyrics and progress appear after connection. Run only one bridge.
@@ -31,6 +31,7 @@ Use Open-NetEase-Remote.cmd. To use an existing desktop/taskbar shortcut, append
 Fully exit NetEase before reopening it. For a taskbar shortcut, right-click the icon, then right-click the app name to open Properties. Client updates or repinning can remove the arguments.
 
 Troubleshooting
+After a successful connection, the next retry starts with a two-second delay. Consecutive failures increase it up to 15 seconds. During the same background session, the bridge remembers the connected Passport and ends scanning as soon as that device is found. The first scan after starting the bridge takes about eight seconds and requires a target selection if multiple devices are found.
 - No volume/progress control: fully exit NetEase and reopen it with Open-NetEase-Remote.cmd.
 - No connection: keep the device on and PC Bluetooth enabled. The bridge retries; reconnection after flashing can take time. Background-Status.cmd checks status, Stop-Background.cmd stops the bridge and Disable-Autostart.cmd disables logon startup.
 - No lyrics: check internet access and try another song. You can also place a UTF-8 timed title - artist.lrc file in the bridge's lyrics folder and restart it; replace Windows-invalid filename characters with underscores.

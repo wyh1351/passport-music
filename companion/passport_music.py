@@ -122,6 +122,7 @@ class Bridge:
         self.delivery_ms=None
         self.lyric_lead_ms=0
         self.manual_offset_ms=0
+        self.ble_address=None
 
     def observe_delivery(self,seconds):
         # Ignore stalls; one congested write must not advance lyrics by seconds.
@@ -233,29 +234,50 @@ async def ble_connection_parameters(address):
         finally:
             if device:device.close()
 
-async def ble_run(bridge, args):
-    from bleak import BleakClient, BleakScanner
-    print("扫描 Passport Music；首次请先在 Windows 蓝牙设置中完成六位码配对。", flush=True)
+async def select_ble_device(address=None):
+    from bleak import BleakScanner
+    def matches(device, advertisement):
+        return (SERVICE in [service.lower() for service in advertisement.service_uuids]
+                and device.address.casefold() == address.casefold())
+    if address:
+        device = await BleakScanner.find_device_by_filter(matches, timeout=8)
+        if device is None:
+            raise RuntimeError("未找到指定 Passport，请开机并确认蓝牙已启用")
+        return device
+    # Keep the complete first scan so two nearby Passports are not chosen at random.
     devices = await BleakScanner.discover(timeout=8, return_adv=True)
-    candidates = [dev for dev, adv in devices.values() if SERVICE in [s.lower() for s in adv.service_uuids]]
-    if args.address: candidates=[d for d in candidates if d.address.casefold()==args.address.casefold()]
-    if not candidates: raise RuntimeError("未找到设备，请开机并确认蓝牙已启用")
-    if len(candidates)!=1: raise RuntimeError("发现多个设备，请使用 --address 选择指定设备")
+    candidates = [device for device, advertisement in devices.values()
+                  if SERVICE in [service.lower() for service in advertisement.service_uuids]]
+    if not candidates:
+        raise RuntimeError("未找到设备，请开机并确认蓝牙已启用")
+    if len(candidates) != 1:
+        raise RuntimeError("发现多个设备，请使用 --address 选择指定设备")
+    return candidates[0]
+
+async def ble_run(bridge, args, on_connected=None):
+    from bleak import BleakClient
+    preferred = args.address or getattr(bridge, 'ble_address', None)
+    print("寻找上次连接的 Passport Music。" if preferred else
+          "扫描 Passport Music；首次请先在 Windows 蓝牙设置中完成六位码配对。", flush=True)
+    device = await select_ble_device(preferred)
     # Bleak's Windows custom pairing supports CONFIRM_ONLY, not PROVIDE_PIN.
     # Preserve authenticated passkey pairing: let Windows Settings own first
     # pairing, then connect only to the resulting bonded device.
     if sys.platform == 'win32':
         from winrt.windows.devices.bluetooth import BluetoothLEDevice
         from winrt.windows.devices.enumeration import DeviceInformation
-        native=await BluetoothLEDevice.from_bluetooth_address_async(int(candidates[0].address.replace(':','').replace('-',''),16))
+        native=await BluetoothLEDevice.from_bluetooth_address_async(int(device.address.replace(':','').replace('-',''),16))
         if native is None: raise RuntimeError("无法读取蓝牙设备，请重新扫描")
         try:
             info=await DeviceInformation.create_from_id_async(native.device_information.id)
             if not info.pairing.is_paired:
                 raise RuntimeError("请先在 Windows 设置→蓝牙和设备→添加设备中配对 Passport Music，输入设备屏幕六位码")
         finally: native.close()
-    async with BleakClient(candidates[0], pair=False, timeout=60) as client, ble_connection_parameters(candidates[0].address):
+    async with BleakClient(device, pair=False, timeout=60) as client, ble_connection_parameters(device.address):
         await client.start_notify(TX, lambda _sender, data: bridge.received(data))
+        bridge.ble_address = device.address
+        if on_connected:
+            on_connected()
         logging.getLogger(__name__).info('BLE MTU: %s',client.mtu_size)
         print("蓝牙已连接。按 Ctrl+C 退出。", flush=True)
         metrics_at=0
@@ -276,7 +298,7 @@ async def ble_run(bridge, args):
                 metrics_at=started+10
         await bridge.run(send)
 
-async def usb_run(bridge, args):
+async def usb_run(bridge, args, on_connected=None):
     import serial
     if not args.port: raise ValueError("USB 模式需要 --port COM端口")
     # Opening USB serial does not flash. Avoid deliberate DTR/RTS reset pulses.
@@ -284,6 +306,8 @@ async def usb_run(bridge, args):
     port.port=args.port; port.baudrate=115200; port.timeout=0; port.write_timeout=1
     port.dtr=False; port.rts=False; port.open()
     try:
+        if on_connected:
+            on_connected()
         async def send(data): await asyncio.to_thread(port.write,b"\n"+data)
         async def read(): return port.read(min(1024,port.in_waiting))
         print("USB 已连接。按 Ctrl+C 退出。", flush=True)
@@ -320,9 +344,12 @@ async def main(args):
         return
     bridge=Bridge(provider,args)
     delay=2
+    def connected():
+        nonlocal delay
+        delay = 2
     while True:
         try:
-            await (usb_run(bridge,args) if args.transport=='usb' else ble_run(bridge,args))
+            await (usb_run(bridge,args,connected) if args.transport=='usb' else ble_run(bridge,args,connected))
             delay=2
         except Exception as exc:
             print(f"连接或播放器异常：{type(exc).__name__}: {exc}；{delay} 秒后重试",flush=True)

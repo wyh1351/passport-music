@@ -23,7 +23,7 @@
 3. 完全退出网易云，再用 `Open-NetEase-Remote.cmd` 打开。
 4. 在 Windows 蓝牙设置中配对 **Passport Music**，输入设备上的六位码。
 
-[Windows 桥接 v1.2.1](https://github.com/wyh1351/passport-music/releases/tag/bridge-v1.2.1) · [固件下载](https://github.com/wyh1351/passport-music/releases/latest) · [完整使用说明](docs/netease-music.zh_CN.md)
+[Windows 桥接 v1.2.2](https://github.com/wyh1351/passport-music/releases/tag/bridge-v1.2.2) · [固件下载](https://github.com/wyh1351/passport-music/releases/latest) · [完整使用说明](docs/netease-music.zh_CN.md)
 
 ## 按键
 

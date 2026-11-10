@@ -10,6 +10,12 @@
 > with `CHANGELOG.zh_CN.md`. The entries currently under `Unreleased` are pending
 > review for the next release; they are not a finalized release history.
 
+## Windows bridge v1.2.2 (2026-11-10)
+
+- Reset the retry delay as soon as a connection is ready, so the next retry starts after two seconds.
+- Remember the connected device during the current background session and finish scanning once that peer is found. The initial scan still checks for multiple devices.
+- Three controlled reconnects restored song data in4.67–5.86 seconds on the tested PC, including the two-second retry interval. A new bridge process can still take longer to connect.
+
 ## Windows bridge v1.2.1 (2026-11-07)
 
 - Add per-user recovery when the background supervisor exits. Enable-Autostart.cmd registers a one-minute recovery task, and the stop and disable commands respect a manual pause.
