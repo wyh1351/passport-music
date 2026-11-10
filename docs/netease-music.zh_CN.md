@@ -5,7 +5,7 @@
 准备：Windows 电脑、蓝牙、桌面版网易云音乐。设备不用配网，在线歌词需要电脑联网。
 
 第一次使用
-1. 下载 [PassportMusic-Windows-v1.2.2.zip](https://github.com/wyh1351/passport-music/releases/download/bridge-v1.2.2/PassportMusic-Windows-v1.2.2.zip) 并解压到固定文件夹。保留程序及 `_internal`、`_background` 文件夹。
+1. 下载 [PassportMusic-Windows-v1.2.3.zip](https://github.com/wyh1351/passport-music/releases/download/bridge-v1.2.3/PassportMusic-Windows-v1.2.3.zip) 并解压到固定文件夹。保留程序及 `_internal`、`_background` 文件夹。
 2. 用社区刷机工具刷入本玩法的完整固件。自行刷写时，完整文件 FoloToy-AI-Passport-full.bin 写入 0x0；可能清除旧设置和配对。应用升级文件不能写入 0x0。
 3. 双击 Enable-Autostart.cmd，启用登录自启和后台恢复。桥接意外退出时，Windows 计划任务每分钟检查并重新启动它。完全退出网易云（包括右下角托盘），再双击 Open-NetEase-Remote.cmd 打开网易云并播放歌曲。
 4. 打开 Windows 设置 → 蓝牙和设备 → 添加设备 → 蓝牙，选择 Passport Music，输入设备屏幕上的六位码。连上后会显示歌名、歌词和进度。只运行一份桥接。
@@ -35,6 +35,14 @@
 - 音量或进度不动：完全退出网易云，重新用 Open-NetEase-Remote.cmd 打开。
 - 没连上：保持设备开机、电脑蓝牙开启，后台会重试；重刷后有时要等待重连。用 Background-Status.cmd 查看后台状态，Stop-Background.cmd 停止后台，Disable-Autostart.cmd 关闭自启。
 - 歌词不出现：检查电脑网络，切一首歌重试。也可在桥接的 lyrics 文件夹放入 UTF-8、带时间标签的“歌名 - 歌手.lrc”，重启桥接；文件名中的 Windows 非法字符换成下划线。
+
+端口冲突时（大多数用户不用改）
+默认控制端口仍是 9223，与 FlClash 的代理端口无关。如果用启动器重开网易云后，音量和进度仍不可用，且 9223 被 Windows 保留或被占用：
+1. 选择一个未被保留或占用的端口，例如 19223；不能只改桥接或只改网易云。
+2. 在 PassportMusic.exe 所在文件夹新建 desktop-port.txt，只写端口数字。用记事本保存时选择“所有文件”，避免变成 desktop-port.txt.txt。
+3. 运行 Stop-Background.cmd，再运行 Enable-Autostart.cmd 重启后台；完全退出网易云，再运行 Open-NetEase-Remote.cmd。
+4. 如果从原桌面或任务栏图标打开，把快捷方式中的 --remote-debugging-port=9223 改成相同数字，例如 --remote-debugging-port=19223。
+后台、启动器和状态检查共用这个文件；单次命令可用 --desktop-port 覆盖。没有配置文件时继续使用 9223。公开包不附带个人端口配置，升级会保留原安装目录中已有的配置。
 
 已有用户可将新桥接包解压到新文件夹，运行其中的 Enable-Autostart.cmd 更新现有安装并启用恢复。Stop-Background.cmd 会暂停后台至下次登录或重新启用，Disable-Autostart.cmd 会关闭自启并移除恢复任务。此次仅升级电脑桥接，可继续使用现有固件和配对。
 

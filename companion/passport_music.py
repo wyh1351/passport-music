@@ -375,6 +375,17 @@ def bridge_instance(enabled=True):
     finally:
         if handle:api.CloseHandle(handle)
 
+def configured_desktop_port(path=None):
+    """Share the local port across the bridge, launcher and status checks."""
+    if path is None:
+        root=Path(sys.executable if getattr(sys,'frozen',False) else __file__).resolve().parent
+        path=root/'desktop-port.txt'
+    try:text=Path(path).read_text(encoding='utf-8-sig').strip()
+    except FileNotFoundError:return 9223
+    if not text.isascii() or not text.isdecimal() or len(text)>5 or not 1024<=int(text)<=65535:
+        raise ValueError('desktop-port.txt 必须填写 1024～65535 之间的端口号')
+    return int(text)
+
 def cli():
     parser=argparse.ArgumentParser(description="AI Passport 网易云音乐遥控桥接")
     parser.add_argument('--transport',choices=['ble','usb'],default='ble')
@@ -387,12 +398,14 @@ def cli():
     parser.add_argument('--diagnose-lyrics',action='store_true',help='诊断当前歌曲歌词查询，不输出歌词文本')
     parser.add_argument('--list-ports',action='store_true')
     parser.add_argument('--scan',action='store_true',help='仅扫描音乐固件蓝牙设备，不连接')
-    parser.add_argument('--desktop-port',type=int,default=9223,help='网易云本机遥控接口端口')
+    parser.add_argument('--desktop-port',type=int,help='网易云本机遥控接口端口，默认读取 desktop-port.txt 或使用 9223')
     parser.add_argument('--launch-player',action='store_true',help='以遥控模式启动已安装的网易云客户端')
     parser.add_argument('--player-exe',help='网易云 cloudmusic.exe 路径')
     parser.add_argument('--debug',action='store_true',help='记录连接和控制诊断，不记录歌曲或歌词文本')
     args=parser.parse_args()
     try:
+        if args.desktop_port is None:args.desktop_port=configured_desktop_port()
+        if not 1024<=args.desktop_port<=65535:raise ValueError('Invalid local player port')
         with bridge_instance(not any((args.diagnose,args.diagnose_lyrics,args.scan,args.list_ports))):
             asyncio.run(main(args))
     except KeyboardInterrupt: print("已退出")

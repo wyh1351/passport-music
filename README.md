@@ -23,7 +23,7 @@ Current interface render with sample song and lyrics.
 3. Fully exit NetEase, then open it with `Open-NetEase-Remote.cmd`.
 4. Pair **Passport Music** in Windows Bluetooth settings using the code on the device.
 
-[Windows bridge v1.2.2](https://github.com/wyh1351/passport-music/releases/tag/bridge-v1.2.2) · [Firmware downloads](https://github.com/wyh1351/passport-music/releases/latest) · [Full instructions](docs/netease-music.md)
+[Windows bridge v1.2.3](https://github.com/wyh1351/passport-music/releases/tag/bridge-v1.2.3) · [Firmware downloads](https://github.com/wyh1351/passport-music/releases/latest) · [Full instructions](docs/netease-music.md)
 
 ## Controls
 

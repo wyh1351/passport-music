@@ -7,7 +7,36 @@ import unittest
 from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'companion'))
 from music_core import CommandDecoder, PREFIX, frame, parse_lrc, lyric_window, find_song, load_lyrics, safe_name, http_json
-from passport_music import Bridge, DemoMusic, ble_run, ble_connection_parameters, select_ble_device, main
+from passport_music import Bridge, DemoMusic, ble_run, ble_connection_parameters, select_ble_device, main, configured_desktop_port, cli
+
+class DesktopPortConfigurationTest(unittest.TestCase):
+    def test_missing_config_keeps_existing_default(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.assertEqual(configured_desktop_port(Path(folder)/'desktop-port.txt'),9223)
+
+    def test_saved_port_is_shared_by_all_launch_modes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'desktop-port.txt'
+            path.write_text('\ufeff19223\n',encoding='utf-8')
+            self.assertEqual(configured_desktop_port(path),19223)
+            path.write_text('20480',encoding='utf-8')
+            self.assertEqual(configured_desktop_port(path),20480)
+
+    def test_invalid_config_is_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'desktop-port.txt'
+            for value in ('','0','80','65536','-19223','19223.0','１９２２３','host:19223','9'*100):
+                path.write_text(value,encoding='utf-8')
+                with self.subTest(value=value),self.assertRaises(ValueError):configured_desktop_port(path)
+
+    def test_explicit_port_overrides_config_and_default_uses_config(self):
+        for argv,expected in ((['--diagnose'],19223),(['--diagnose','--desktop-port','20480'],20480)):
+            captured=[]
+            async def run(args):captured.append(args.desktop_port)
+            with patch.object(sys,'argv',['passport_music',*argv]),patch('passport_music.configured_desktop_port',return_value=19223) as config,patch('passport_music.main',side_effect=run):
+                cli()
+            self.assertEqual(captured,[expected])
+            self.assertEqual(config.call_count,0 if '--desktop-port' in argv else 1)
 
 class ConnectionParametersTest(unittest.IsolatedAsyncioTestCase):
     async def check_preference(self,unavailable=False):

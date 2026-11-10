@@ -10,6 +10,12 @@
 > with `CHANGELOG.zh_CN.md`. The entries currently under `Unreleased` are pending
 > review for the next release; they are not a finalized release history.
 
+## Windows bridge v1.2.3 (2026-11-11)
+
+- Updated the Windows bridge to v1.2.3; the default port remains 9223.
+- Added desktop-port.txt to share a custom local control port across the background bridge, launcher and status check when the default port is reserved or occupied.
+- Added port-conflict and upgrade instructions. No personal port configuration is included, and no firmware update is needed.
+
 ## Windows bridge v1.2.2 (2026-11-10)
 
 - Reset the retry delay as soon as a connection is ready, so the next retry starts after two seconds.
