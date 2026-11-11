@@ -20,19 +20,49 @@ const char *music_pet_name(int pet) {
 }
 void music_preferences_copy(music_state_t *dest,const music_state_t *source) {
     dest->settings_page=source->settings_page; dest->settings_edit=source->settings_edit;
+    dest->settings_submenu=source->settings_submenu; dest->settings_group=source->settings_group;
+    dest->settings_index=source->settings_index;
     dest->setting=source->setting; dest->lyric_offset_ms=source->lyric_offset_ms;
     dest->brightness=source->brightness; dest->screen_seconds=source->screen_seconds;
     dest->pet=source->pet; dest->wallpaper=source->wallpaper; dest->save_status=source->save_status;
 }
+int music_settings_menu_count(const music_state_t *s) {
+    return s->settings_submenu?3:4;
+}
+int music_settings_menu_item(const music_state_t *s,int row) {
+    if (row<0 || row>=music_settings_menu_count(s)) return -1;
+    static const int items[3][4]={{MUSIC_SETTING_OFFSET,-2,-3,-1},
+        {MUSIC_SETTING_BRIGHTNESS,MUSIC_SETTING_SCREEN,-1,-1},
+        {MUSIC_SETTING_WALLPAPER,MUSIC_SETTING_PET,-1,-1}};
+    int group=s->settings_submenu?s->settings_group:0;
+    if (group<0 || group>2) group=0;
+    return items[group][row];
+}
+const char *music_settings_menu_name(const music_state_t *s,int row) {
+    static const char *names[]={"歌词微调","自动息屏","屏幕亮度","屏幕宠物","界面背景"};
+    int item=music_settings_menu_item(s,row);
+    return item==-3?"外观设置":item==-2?"屏幕设置":item==-1?"返回":names[item];
+}
 unsigned music_settings_input(music_state_t *s, int key, bool held, bool twice) {
     if (!s->settings_page || key<0 || key>2) return 0;
     if ((unsigned)s->setting>=MUSIC_SETTING_COUNT) s->setting=MUSIC_SETTING_OFFSET;
+    int menu_count=music_settings_menu_count(s);
+    if (s->settings_index<0 || s->settings_index>=menu_count) s->settings_index=0;
     if (key==2 && twice) return 0;
-    if (key==2 && held) { s->settings_page=false; s->settings_edit=false; return MUSIC_PREF_SAVE; }
+    if (key==2 && held) { s->settings_page=false; s->settings_edit=false; s->settings_submenu=false; return MUSIC_PREF_SAVE; }
     if (!s->settings_edit) {
         if (key==2) {
-            s->settings_edit=true;
-        } else s->setting=(s->setting+(key==0?MUSIC_SETTING_COUNT-1:1))%MUSIC_SETTING_COUNT;
+            int item=music_settings_menu_item(s,s->settings_index);
+            if (item==-1) {
+                if (!s->settings_submenu) {
+                    s->settings_page=false; s->settings_edit=false; s->settings_index=0;
+                    return MUSIC_PREF_SAVE;
+                }
+                s->settings_submenu=false; s->settings_index=s->settings_group;
+            }
+            else if (item<0) { s->settings_group=-item-1; s->settings_submenu=true; s->settings_index=0; }
+            else { s->setting=(music_setting_t)item; s->settings_edit=true; }
+        } else s->settings_index=(s->settings_index+(key==0?menu_count-1:1))%menu_count;
         return 0;
     }
     if (key==2) { s->settings_edit=false; return MUSIC_PREF_SAVE; }

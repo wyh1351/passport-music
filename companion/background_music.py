@@ -1,5 +1,6 @@
 """Per-user, windowless logon supervisor. Does not launch or patch NetEase."""
 import argparse
+import base64
 import ctypes
 import json
 import logging
@@ -19,7 +20,9 @@ RUN_KEY = r'Software\Microsoft\Windows\CurrentVersion\Run'
 RUN_NAME = 'FoloToyPassportMusic'
 LAUNCHER = 'PassportMusicBackground.exe'
 BRIDGE = 'PassportMusic.exe'
+CONTROL = 'PassportMusicControl.exe'
 PAUSE_FILE = 'background-paused'
+INSTALL_KEY = r'Software\FoloToy\PassportMusic'
 
 def decode_bridge_line(line, fallback=None):
     try: return line.decode('utf-8')
@@ -32,7 +35,22 @@ def run_command(root):
     if len(command) > 260: raise ValueError('Windows logon command exceeds 260 characters')
     return command
 
+def persisted_root():
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, INSTALL_KEY) as key:
+            saved = Path(winreg.QueryValueEx(key, 'InstallPath')[0])
+            if saved.is_absolute() and (saved / LAUNCHER).is_file():
+                return saved
+    except (ImportError, OSError, TypeError, ValueError):
+        pass
+    return None
+
+
 def install_root():
+    saved = persisted_root()
+    if saved is not None:
+        return saved
     command = registered()
     if isinstance(command, str) and command.startswith('"') and command.endswith('" --background'):
         candidate = Path(command[1:-len('" --background')])
@@ -111,6 +129,35 @@ def request_stop(root):
         setup_logger(root).info('Background stop requested')
     stop(root)
 
+
+def create_desktop_shortcut(root):
+    """Use the current user's desktop; never replace an unrelated shortcut."""
+    target = Path(root) / CONTROL
+    if not target.is_file():
+        return
+    escaped = str(target).replace("'", "''")
+    script = """$ErrorActionPreference='Stop'
+$target='TARGET'
+$shell=New-Object -ComObject WScript.Shell
+$path=Join-Path ([Environment]::GetFolderPath('Desktop')) 'Passport Music.lnk'
+if (Test-Path -LiteralPath $path) {
+ $old=$shell.CreateShortcut($path)
+ if ($old.TargetPath -ne $target) { return }
+}
+$link=$shell.CreateShortcut($path)
+$link.TargetPath=$target
+$link.WorkingDirectory=Split-Path -LiteralPath $target
+$link.IconLocation=$target+',0'
+$link.Description='Passport Music'
+$link.Save()
+""".replace('TARGET', escaped)
+    encoded = base64.b64encode(script.encode('utf-16-le')).decode('ascii')
+    shell = Path(os.environ['SystemRoot']) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
+    result = subprocess.run([str(shell), '-NoProfile', '-NonInteractive', '-EncodedCommand', encoded],
+                            capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW, timeout=15)
+    if result.returncode:
+        raise RuntimeError('桌面快捷方式创建失败；可从安装目录打开 PassportMusicControl.exe。')
+
 def install(source, start=True, destination=None):
     destination = Path(destination).resolve() if destination is not None else install_root()
     for name in (BRIDGE, LAUNCHER, '_internal'):
@@ -121,9 +168,27 @@ def install(source, start=True, destination=None):
         raise RuntimeError('A different Passport autostart entry exists; it was preserved')
     request_stop(destination)
     if source.resolve() != destination.resolve():
+        # Installed UI files can be locked during an upgrade; request its exit
+        # first, then terminate only a matching, same-user process if needed.
+        ui_state = destination / 'control-state.json'
+        try:
+            state = json.loads(ui_state.read_text(encoding='utf-8'))
+            process = owned_process(state.get('pid'), destination / CONTROL)
+        except (OSError, ValueError, TypeError):
+            process = None
+        if process:
+            (destination / 'control-close-request').touch()
+            try: process.wait(timeout=4)
+            except Exception:
+                process.terminate(); process.wait(timeout=5)
         shutil.copytree(source, destination, dirs_exist_ok=True,
-            ignore=shutil.ignore_patterns('logs', '*-state.json', '*.pid', PAUSE_FILE))
+            ignore=shutil.ignore_patterns('logs', '*-state.json', 'bridge-status.json', 'control-*-request*', '*.pid', PAUSE_FILE))
     set_autostart(destination, True)
+    import winreg
+    with winreg.CreateKey(winreg.HKEY_CURRENT_USER, INSTALL_KEY) as key:
+        winreg.SetValueEx(key, 'InstallPath', 0, winreg.REG_SZ, str(destination))
+    (destination / 'installation.json').write_text('{"schema":1,"installed":true}\n', encoding='utf-8')
+    create_desktop_shortcut(destination)
     if not start:
         (destination / PAUSE_FILE).touch()
     try:
@@ -178,6 +243,9 @@ def supervise(root, recover=False):
         else:
             (root / PAUSE_FILE).unlink(missing_ok=True)
         delay = 5
+        if (root / CONTROL).is_file():
+            subprocess.Popen([str(root / CONTROL), '--tray'], cwd=root,
+                             creationflags=subprocess.CREATE_NO_WINDOW)
         while not (root / PAUSE_FILE).exists():
             env = dict(os.environ, PYTHONIOENCODING='utf-8')
             # No --launch-player. It may connect before or after NetEase opens.

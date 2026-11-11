@@ -53,7 +53,7 @@ static void pet_update(const music_state_t *s) {
     int selected=music_pet_valid(s->pet)?s->pet:MUSIC_PET_CAT;
     show(cat,selected!=MUSIC_PET_NONE);
     if (selected==MUSIC_PET_NONE) return;
-    bool playing=s->connected && s->available && s->playing && !s->settings_page;
+    bool playing=s->connected && s->available && s->playing;
     music_cat_pose_t pose=music_cat_pose(lv_tick_get(),playing);
     const lv_image_dsc_t *src=sprites[selected][pose.closed?1:0];
     if (lv_image_get_src(cat)!=src) lv_image_set_src(cat,src);
@@ -113,7 +113,8 @@ static void music_ui_update_content(const music_state_t *s,int battery_raw,unsig
     if (battery<0) snprintf(b,sizeof(b),"--%%"); else snprintf(b,sizeof(b),"%d%%",battery);
     text(battery_label,b); pet_update(s);
     bool menu=s->settings_page && !s->settings_edit,detail=s->settings_page && s->settings_edit;
-    for (int i=0;i<MUSIC_SETTING_COUNT;i++) show(rows[i],menu);
+    int menu_count=music_settings_menu_count(s);
+    for (int i=0;i<MUSIC_SETTING_COUNT;i++) show(rows[i],menu && i<menu_count);
     show(detail_hint,detail);
     show(before,!s->settings_page); show(after,!s->settings_page); show(current,!menu); show(accent,!s->settings_page);
     show(progress,!menu && !(detail && (s->setting==MUSIC_SETTING_PET || s->setting==MUSIC_SETTING_WALLPAPER))); show(elapsed,!s->settings_page); show(duration,!s->settings_page);
@@ -121,13 +122,15 @@ static void music_ui_update_content(const music_state_t *s,int battery_raw,unsig
     lv_obj_set_style_text_align(current,detail?LV_TEXT_ALIGN_CENTER:LV_TEXT_ALIGN_LEFT,0);
     lv_obj_set_pos(current,detail?16:27,detail?174:162); lv_obj_set_width(current,detail?208:197);
     if (s->settings_page) {
-        text(status,"设备设置");
+        text(status,!s->connected?"等待电脑连接":!s->available?"电脑已连接":s->playing?"正在播放":"已暂停");
         if (menu) {
-            text(title,"显示与歌词"); text(artist,"歌词、显示与宠物");
-            const char *items[]={"歌词微调","自动息屏","屏幕亮度","屏幕宠物","界面背景"};
+            text(title,!s->settings_submenu?"设备设置":s->settings_group==1?"屏幕设置":"外观设置"); text(artist,"");
             bool painted=music_wallpaper_valid(s->wallpaper) && s->wallpaper!=0;
-            for (int i=0;i<MUSIC_SETTING_COUNT;i++) {
-                bool selected=(int)s->setting==i;
+            for (int i=0;i<menu_count;i++) {
+                lv_obj_set_pos(rows[i],12,menu_count==4?116+i*43:120+i*47);
+                lv_obj_set_height(rows[i],menu_count==4?39:44);
+                lv_obj_set_y(names[i],menu_count==4?7:9);lv_obj_set_y(values[i],menu_count==4?7:9);
+                bool selected=s->settings_index==i;
                 lv_obj_set_style_bg_color(rows[i],lv_color_hex(painted?0x111b32:selected?SOFT:0xffffff),0);
                 lv_obj_set_style_bg_opa(rows[i],painted?(selected?150:76):LV_OPA_COVER,0);
                 lv_obj_set_style_border_color(rows[i],lv_color_hex(selected?(painted?0xffe7a0:RED):(painted?0xffffff:RULE)),0);
@@ -135,13 +138,16 @@ static void music_ui_update_content(const music_state_t *s,int battery_raw,unsig
                 lv_obj_set_style_border_width(rows[i],selected?3:1,0);
                 lv_obj_set_style_border_side(rows[i],selected?LV_BORDER_SIDE_LEFT:LV_BORDER_SIDE_BOTTOM,0);
                 lv_obj_set_style_text_color(names[i],lv_color_hex(selected?(painted?0xffe7a0:RED):(painted?0xeaf1ff:INK)),0);
-                lv_obj_set_style_text_color(values[i],lv_color_hex(selected?(painted?0xffe7a0:RED):(painted?0xeaf1ff:MUTED)),0); text(names[i],items[i]);
+                lv_obj_set_style_text_color(values[i],lv_color_hex(selected?(painted?0xffe7a0:RED):(painted?0xeaf1ff:MUTED)),0); text(names[i],music_settings_menu_name(s,i));
+                int item=music_settings_menu_item(s,i);b[0]=0;
+                if (item==MUSIC_SETTING_OFFSET) snprintf(b,sizeof(b),"%+d ms",s->lyric_offset_ms);
+                else if (item==MUSIC_SETTING_SCREEN) timeout_text(b,sizeof(b),s->screen_seconds);
+                else if (item==MUSIC_SETTING_BRIGHTNESS) snprintf(b,sizeof(b),"%d%%",s->brightness);
+                else if (item==MUSIC_SETTING_PET) snprintf(b,sizeof(b),"%s",music_pet_name(s->pet));
+                else if (item==MUSIC_SETTING_WALLPAPER) snprintf(b,sizeof(b),"%s",music_wallpaper_name(s->wallpaper));
+                lv_obj_set_style_text_font(values[i],item==MUSIC_SETTING_OFFSET || item==MUSIC_SETTING_BRIGHTNESS?&lv_font_montserrat_14:&music_font_16,0);
+                text(values[i],b);
             }
-            snprintf(b,sizeof(b),"%+d ms",s->lyric_offset_ms); text(values[0],b);
-            timeout_text(b,sizeof(b),s->screen_seconds); text(values[1],b);
-            snprintf(b,sizeof(b),"%d%%",s->brightness); text(values[2],b);
-            text(values[MUSIC_SETTING_PET],music_pet_name(s->pet));
-            text(values[MUSIC_SETTING_WALLPAPER],music_wallpaper_name(s->wallpaper));
             if (!s->connected && passkey<1000000) { snprintf(b,sizeof(b),"配对码：%06u",passkey); text(artist,b); }
             return;
         }
@@ -155,7 +161,8 @@ static void music_ui_update_content(const music_state_t *s,int battery_raw,unsig
             lv_bar_set_value(progress,music_screen_option(s->screen_seconds)*1000/6,LV_ANIM_OFF);
         } else if (s->setting==MUSIC_SETTING_WALLPAPER) {
             text(title,"界面背景"); text(artist,music_wallpaper_name(s->wallpaper));
-            text(detail_hint,""); text(current,"");
+            snprintf(b,sizeof(b),"%d / %d",s->wallpaper+1,MUSIC_WALLPAPER_COUNT);
+            text(detail_hint,b); text(current,"");
         } else if (s->setting==MUSIC_SETTING_PET) {
             text(title,"屏幕宠物"); text(artist,"歌名旁的像素小伙伴");
             text(detail_hint,"上 / 下选择，自动保存"); text(current,music_pet_name(s->pet));
@@ -166,7 +173,7 @@ static void music_ui_update_content(const music_state_t *s,int battery_raw,unsig
         if (!s->connected && passkey<1000000) { snprintf(b,sizeof(b),"配对码：%06u",passkey); text(artist,b); }
         return;
     }
-    text(status,!s->connected?"等待电脑连接":!s->available?"网易云未就绪":s->playing?"正在播放":"已暂停");
+    text(status,!s->connected?"等待电脑连接":!s->available?"电脑已连接":s->playing?"正在播放":"已暂停");
     text(title,s->connected && s->title[0]?s->title:"随身音乐遥控器"); text(artist,s->connected?s->artist:"Passport Music / 蓝牙");
     text(before,s->connected?s->before:"");
     if (!s->connected && passkey<1000000) { snprintf(b,sizeof(b),"配对码：%06u",passkey); text(current,b); }

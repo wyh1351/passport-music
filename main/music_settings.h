@@ -14,6 +14,10 @@ const char *music_pet_name(int pet);
 void music_preferences_copy(music_state_t *dest, const music_state_t *source);
 // Pure settings navigation. UP/DOWN/OK are 0/1/2, as in music_key_action.
 unsigned music_settings_input(music_state_t *state, int key, bool held, bool twice);
+// Top menu has four rows, submenus three; negative entries are groups or Back.
+int music_settings_menu_count(const music_state_t *state);
+int music_settings_menu_item(const music_state_t *state, int row);
+const char *music_settings_menu_name(const music_state_t *state, int row);
 
 typedef struct {
     int64_t activity_at, suppress_until;

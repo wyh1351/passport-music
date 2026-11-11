@@ -10,6 +10,14 @@
 > with `CHANGELOG.zh_CN.md`. The entries currently under `Unreleased` are pending
 > review for the next release; they are not a finalized release history.
 
+## Passport Music v1.3.0 (2026-11-12)
+
+- Added a desktop control center for status, settings and help, with desktop shortcut and tray actions.
+- Improved onboarding, installation status, checkbox visibility, high-DPI rendering and the shared red icon. Removed local-lyrics and pause-connection entries from the UI.
+- Fixed Open NetEase for minimized or tray-hidden windows, restoring the existing player without restarting playback.
+- Grouped device settings with Back at every menu level. Backgrounds show names and indices; pets follow playback/pause inside settings too.
+- Updated images, setup, upgrade and port-conflict instructions while retaining existing settings and pairing.
+
 ## Windows bridge v1.2.3 (2026-11-11)
 
 - Updated the Windows bridge to v1.2.3; the default port remains 9223.

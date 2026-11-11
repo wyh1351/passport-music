@@ -149,7 +149,8 @@ static void worker(void *arg) {
             }
             music_action_t action = music_key_action(input.key, input.event == BSP_BTN_LONG, input.event == BSP_BTN_DOUBLE);
             if (action==MUSIC_SETTINGS) {
-                state.settings_page=true; state.settings_edit=false; render_at=0;
+                state.settings_page=true; state.settings_edit=false; state.settings_submenu=false;
+                state.settings_index=0; render_at=0;
             } else if (action != MUSIC_NONE && state.connected &&
                        (state.available || action==MUSIC_DESKTOP_LYRICS)) {
                 char out[128];

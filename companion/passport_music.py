@@ -15,6 +15,7 @@ import time
 sys.coinit_flags = 0
 from music_core import (SERVICE, RX, TX, CommandDecoder, frame, load_lyrics, lyric_window)
 from ncm_desktop import VOLUME_STEPS
+from control_model import BridgeStatus
 
 class WindowsMediaSession:
     def __init__(self):
@@ -123,6 +124,7 @@ class Bridge:
         self.lyric_lead_ms=0
         self.manual_offset_ms=0
         self.ble_address=None
+        self.health=None
 
     def observe_delivery(self,seconds):
         # Ignore stalls; one congested write must not advance lyrics by seconds.
@@ -210,6 +212,10 @@ class Bridge:
             state.update(before=before, lyric=current, after=after,lyric_offset_ack=self.manual_offset_ms,
                          message=self.notice if time.monotonic()<self.notice_until else self.message)
             await send(frame(state))
+            if self.health:
+                lyric_status=('ready' if self.lyrics else 'loading' if self.lyric_task and not self.lyric_task.done()
+                              else 'error' if self.message.startswith('歌词查询失败') else 'missing' if self.key else 'waiting')
+                self.health.update('connected', lyrics=lyric_status)
             # Account for actual GATT transmission time instead of adding a
             # fixed half-second delay after every frame. Never queue stale frames.
             await asyncio.sleep(max(0,.2-(time.monotonic()-started)))
@@ -257,9 +263,11 @@ async def select_ble_device(address=None):
 async def ble_run(bridge, args, on_connected=None):
     from bleak import BleakClient
     preferred = args.address or getattr(bridge, 'ble_address', None)
+    if getattr(bridge,'health',None):bridge.health.update('scanning',lyrics='waiting')
     print("寻找上次连接的 Passport Music。" if preferred else
           "扫描 Passport Music；首次请先在 Windows 蓝牙设置中完成六位码配对。", flush=True)
     device = await select_ble_device(preferred)
+    if getattr(bridge,'health',None):bridge.health.update('connecting')
     # Bleak's Windows custom pairing supports CONFIRM_ONLY, not PROVIDE_PIN.
     # Preserve authenticated passkey pairing: let Windows Settings own first
     # pairing, then connect only to the resulting bonded device.
@@ -276,6 +284,7 @@ async def ble_run(bridge, args, on_connected=None):
     async with BleakClient(device, pair=False, timeout=60) as client, ble_connection_parameters(device.address):
         await client.start_notify(TX, lambda _sender, data: bridge.received(data))
         bridge.ble_address = device.address
+        if getattr(bridge,'health',None):bridge.health.update('connected')
         if on_connected:
             on_connected()
         logging.getLogger(__name__).info('BLE MTU: %s',client.mtu_size)
@@ -343,6 +352,7 @@ async def main(args):
             internal_player=provider.native if isinstance(provider,WindowsMusic) else False), ensure_ascii=False))
         return
     bridge=Bridge(provider,args)
+    if getattr(args,'health_root',None):bridge.health=BridgeStatus(args.health_root)
     delay=2
     def connected():
         nonlocal delay
@@ -352,6 +362,7 @@ async def main(args):
             await (usb_run(bridge,args,connected) if args.transport=='usb' else ble_run(bridge,args,connected))
             delay=2
         except Exception as exc:
+            if bridge.health:bridge.health.update('retrying',lyrics='waiting')
             print(f"连接或播放器异常：{type(exc).__name__}: {exc}；{delay} 秒后重试",flush=True)
             await asyncio.sleep(delay); delay=min(15,delay*2)
 
@@ -403,6 +414,8 @@ def cli():
     parser.add_argument('--player-exe',help='网易云 cloudmusic.exe 路径')
     parser.add_argument('--debug',action='store_true',help='记录连接和控制诊断，不记录歌曲或歌词文本')
     args=parser.parse_args()
+    args.health_root=Path(sys.executable if getattr(sys,'frozen',False) else __file__).resolve().parent
+    if any((args.diagnose,args.diagnose_lyrics,args.scan,args.list_ports)):args.health_root=None
     try:
         if args.desktop_port is None:args.desktop_port=configured_desktop_port()
         if not 1024<=args.desktop_port<=65535:raise ValueError('Invalid local player port')

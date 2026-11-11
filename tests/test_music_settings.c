@@ -1,6 +1,7 @@
 #include "music_settings.h"
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 
 int main(void) {
     assert(music_brightness_valid(5) && music_brightness_valid(75) && music_brightness_valid(100));
@@ -27,58 +28,64 @@ int main(void) {
     }
     assert(music_settings_input(&pet,2,false,false)==MUSIC_PREF_SAVE && !pet.settings_edit && pet.settings_page);
     assert(music_settings_input(&pet,2,true,false)==MUSIC_PREF_SAVE && !pet.settings_page);
-    pet=(music_state_t){.settings_page=true,.setting=MUSIC_SETTING_BRIGHTNESS};
-    music_settings_input(&pet,1,false,false);assert(pet.setting==MUSIC_SETTING_PET);
-    music_settings_input(&pet,1,false,false);assert(pet.setting==MUSIC_SETTING_WALLPAPER);
-    music_settings_input(&pet,1,false,false);assert(pet.setting==MUSIC_SETTING_OFFSET);
-    music_settings_input(&pet,0,false,false);assert(pet.setting==MUSIC_SETTING_WALLPAPER);
-    // Every detail uses the same return/exit rules and preserves all preferences.
+    // Top-level groups preserve selection on Back; holding OK always exits.
+    music_state_t top={.settings_page=true,.lyric_offset_ms=350,.brightness=75,
+        .screen_seconds=60,.pet=MUSIC_PET_PENGUIN,.wallpaper=7};
+    assert(music_settings_menu_count(&top)==4);
+    assert(!strcmp(music_settings_menu_name(&top,3),"返回"));
+    music_settings_input(&top,0,false,false);assert(top.settings_index==3);
+    music_settings_input(&top,1,false,false);assert(top.settings_index==0);
+    for (int i=0;i<3;i++) music_settings_input(&top,1,false,false);
+    assert(top.settings_index==3);
+    assert(music_settings_input(&top,2,false,false)==MUSIC_PREF_SAVE);
+    assert(!top.settings_page && !top.settings_edit && !top.settings_submenu);
+    assert(top.lyric_offset_ms==350 && top.brightness==75 && top.screen_seconds==60);
+    assert(top.pet==MUSIC_PET_PENGUIN && top.wallpaper==7);
+    music_state_t menu={.settings_page=true,.lyric_offset_ms=350,.brightness=75,.screen_seconds=60};
+    music_settings_input(&menu,1,false,false);assert(menu.settings_index==1);
+    music_settings_input(&menu,2,false,false);assert(menu.settings_submenu && menu.settings_group==1);
+    music_settings_input(&menu,2,false,false);assert(menu.settings_edit && menu.setting==MUSIC_SETTING_BRIGHTNESS);
+    music_settings_input(&menu,2,false,false);assert(!menu.settings_edit && menu.settings_submenu);
+    music_settings_input(&menu,0,false,false);assert(menu.settings_index==2);
+    music_settings_input(&menu,2,false,false);assert(!menu.settings_submenu && menu.settings_index==1);
+    music_settings_input(&menu,1,false,false);music_settings_input(&menu,2,false,false);
+    assert(menu.settings_submenu && menu.settings_group==2);
+    music_settings_input(&menu,2,false,false);assert(menu.settings_edit && menu.setting==MUSIC_SETTING_WALLPAPER);
+    assert(music_settings_input(&menu,2,true,false)==MUSIC_PREF_SAVE && !menu.settings_page);
+    assert(menu.lyric_offset_ms==350 && menu.brightness==75 && menu.screen_seconds==60);
+    // Every detail returns without changing its value and ignores a double OK.
     for (int setting=0;setting<MUSIC_SETTING_COUNT;++setting) {
-        music_state_t item={.settings_page=true,.setting=(music_setting_t)setting,
+        music_state_t item={.settings_page=true,.settings_edit=true,.setting=(music_setting_t)setting,
+            .settings_submenu=setting!=MUSIC_SETTING_OFFSET,.settings_group=setting>=MUSIC_SETTING_PET?2:1,
             .lyric_offset_ms=350,.brightness=75,.screen_seconds=60};
-        assert(!music_settings_input(&item,2,false,false) && item.settings_edit);
         assert(!music_settings_input(&item,2,false,true) && item.settings_edit);
         assert(music_settings_input(&item,2,false,false)==MUSIC_PREF_SAVE);
         assert(item.settings_page && !item.settings_edit);
         assert(item.lyric_offset_ms==350 && item.brightness==75 && item.screen_seconds==60);
-        music_settings_input(&item,2,false,false);
+        item.settings_edit=true;
         assert(music_settings_input(&item,2,true,false)==MUSIC_PREF_SAVE);
-        assert(!item.settings_page && !item.settings_edit);
-        assert(item.lyric_offset_ms==350 && item.brightness==75 && item.screen_seconds==60);
-        item.settings_page=true;
-        assert(!music_settings_input(&item,2,false,true) && item.settings_page);
-        assert(music_settings_input(&item,2,true,false)==MUSIC_PREF_SAVE && !item.settings_page);
+        assert(!item.settings_page && !item.settings_edit && !item.settings_submenu);
     }
-    music_state_t s={.settings_page=true,.lyric_offset_ms=350,.brightness=75,.screen_seconds=60};
-    assert(!music_settings_input(&s,2,false,false));
-    assert(s.settings_edit && s.lyric_offset_ms==350);
+    music_state_t s={.settings_page=true,.settings_edit=true,.setting=MUSIC_SETTING_OFFSET,
+        .lyric_offset_ms=350,.brightness=75,.screen_seconds=60};
     assert(music_settings_input(&s,0,false,false)==MUSIC_PREF_CHANGED && s.lyric_offset_ms==400);
     assert(music_settings_input(&s,2,false,false)==MUSIC_PREF_SAVE && !s.settings_edit);
-    music_settings_input(&s,1,false,false);
-    assert(s.setting==MUSIC_SETTING_SCREEN && s.lyric_offset_ms==400);
-    music_settings_input(&s,2,false,false);
+    s.settings_edit=true;s.setting=MUSIC_SETTING_SCREEN;
     for (int i=0;i<8;i++) music_settings_input(&s,0,false,false);
     assert(s.screen_seconds==0 && s.lyric_offset_ms==400);
-    assert(music_settings_input(&s,2,false,false)==MUSIC_PREF_SAVE);
-    assert(s.screen_seconds==0 && !s.settings_edit && s.settings_page);
-    music_settings_input(&s,2,false,false);
+    assert(music_settings_input(&s,2,false,false)==MUSIC_PREF_SAVE && s.screen_seconds==0);
+    s.settings_edit=true;
     for (int i=0;i<8;i++) music_settings_input(&s,1,false,false);
     assert(s.screen_seconds==15);
-    music_settings_input(&s,2,false,false);
-    music_settings_input(&s,1,false,false);
-    music_settings_input(&s,2,false,false);
-    assert(s.setting==MUSIC_SETTING_BRIGHTNESS && s.settings_edit);
+    s.setting=MUSIC_SETTING_BRIGHTNESS;
     for (int i=0;i<8;i++) music_settings_input(&s,1,true,false);
     assert(s.brightness==5 && s.lyric_offset_ms==400);
     assert(!music_settings_input(&s,1,false,false));
-    music_settings_input(&s,0,true,false); assert(s.brightness==25);
+    music_settings_input(&s,0,true,false);assert(s.brightness==25);
     for (int i=0;i<8;i++) music_settings_input(&s,0,true,false);
     assert(s.brightness==100);
-    assert(music_settings_input(&s,2,false,false)==MUSIC_PREF_SAVE && !s.settings_edit);
     assert(music_settings_input(&s,2,true,false)==MUSIC_PREF_SAVE && !s.settings_page);
     assert(!music_settings_input(&s,0,false,false));
-    s.settings_page=true;s.setting=MUSIC_SETTING_OFFSET;s.settings_edit=true;
-    assert(music_settings_input(&s,2,false,false)==MUSIC_PREF_SAVE && s.lyric_offset_ms==400);
 
     // Wallpaper choice wraps in both directions and survives incoming song frames.
     assert(!music_wallpaper_valid(-1) && !music_wallpaper_valid(MUSIC_WALLPAPER_COUNT));

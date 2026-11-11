@@ -2,48 +2,50 @@
 
 # Passport Music
 
-You need a Windows PC with Bluetooth and the NetEase Cloud Music desktop app. No device Wi-Fi setup is needed. Online lyrics use the PC's internet connection.
+You need Windows 10/11, Bluetooth and the NetEase Cloud Music desktop app. No device Wi-Fi setup is needed. Online lyrics use the PC connection.
 
 First use
-1. Download [PassportMusic-Windows-v1.2.3.zip](https://github.com/wyh1351/passport-music/releases/download/bridge-v1.2.3/PassportMusic-Windows-v1.2.3.zip) and extract it to a permanent folder. Keep the programs and the `_internal` and `_background` folders together.
-2. Flash this play with the community flasher. For manual flashing, FoloToy-AI-Passport-full.bin starts at 0x0 and may reset old settings and bonds. Never flash an app-only upgrade at 0x0.
-3. Run Enable-Autostart.cmd to enable logon startup and automatic recovery. A Windows scheduled task checks once a minute and restarts the bridge after an unexpected exit. Fully exit NetEase, including its tray instance, then run Open-NetEase-Remote.cmd and play a song.
-4. Add a Bluetooth device in Windows Settings, choose Passport Music and enter the six-digit code shown on the device. The song, lyrics and progress appear after connection. Run only one bridge.
+1. Flash this play with the community flasher and keep Passport powered on.
+2. Download [Windows control center v1.3.0](https://github.com/wyh1351/passport-music/releases/download/v1.3.0/PassportMusic-Windows-v1.3.0.zip) and extract it. Keep all programs and support folders together.
+3. Open PassportMusicControl.exe and click Get Started on the home page. It installs the background bridge, creates the Passport Music desktop shortcut and enables login startup.
+4. Click Open NetEase and play a song. A running player is brought back even when hidden in the tray. If remote control requires restarting NetEase, the software asks first.
+5. Open Bluetooth Settings, add Passport Music and enter the six-digit code shown on the device. Pair once; the song, lyrics and progress appear after connection.
+
+Daily use
+Open the configured NetEase app. The companion runs in the background. Click the Passport Music desktop shortcut or tray icon for status. Right-click the tray for the player, reconnect, settings or exit.
+Closing the window hides it in the tray. Exit stops this session; the next login follows the startup setting. Do not run a second legacy bridge alongside it.
 
 Home controls
 - UP: tap +5 volume points, double-tap +20, hold for the previous track.
-- DOWN: tap -5 volume points, double-tap -20, hold for the next track.
-- OK: tap play/pause, double-tap PC desktop lyrics on/off, hold to open settings.
-Volume changes the NetEase app's own slider, in percentage points.
+- DOWN: tap -5, double-tap -20, hold for the next track.
+- OK: tap play/pause, double-tap PC desktop lyrics, hold for settings.
+Volume adjusts the NetEase app's own slider. Any key wakes the screen; the first gesture does not control music.
 
-Settings
-Use UP/DOWN to select and tap OK to enter. Tap OK in a detail page to go back; hold OK anywhere in settings to return home.
-- Lyric timing: UP earlier, DOWN later. Tap 50ms or hold 250ms, within +/-2000ms.
-- Screen timeout: 15/30 seconds, 1/2/5/10 minutes or never.
-- Brightness: 5-100%; UP brighter, DOWN dimmer. Tap 5 points or hold 20.
-- Screen pet: Headphone cat, Dog, Rabbit, Penguin or Hidden. UP/DOWN cycles the choices.
-- Interface background: Default (white) or nine pixel-art landscapes. UP/DOWN cycles with an instant preview. The same background appears on playback, the settings menu and all detail pages.
-Changes save after about one idle second and survive a restart. Settings footers are blank. Any key wakes the screen; that first gesture does not control the music.
+Device settings
+UP/DOWN selects. Tap OK to enter or return from a detail page. Hold OK anywhere to return home.
+- Top menu: Lyric Timing, Screen Settings, Appearance, Back. Back returns home.
+- Screen Settings: Brightness, Screen Timeout, Back. Back returns one level.
+- Appearance: Interface Background, Screen Pet, Back. Back returns one level.
+Lyric timing: UP earlier, DOWN later; tap 50ms, hold 250ms, range +/-2000ms.
+Brightness: 5-100%; tap 5 points, hold 20.
+Timeout: 15/30 seconds, 1/2/5/10 minutes or never.
+Background: Default white plus nine pixel scenes. UP/DOWN previews a name and index; the same image appears on playback and settings pages.
+Pet: Headphone Cat, Dog, Rabbit, Penguin or Hidden. Pets follow playback/pause on both home and settings pages.
+Changes save after about one idle second and survive restart. Settings footers stay clear.
 
-Opening NetEase later
-Use Open-NetEase-Remote.cmd. To use an existing desktop/taskbar shortcut, append a space and these arguments to its Target field, outside the existing path quotes:
---remote-debugging-port=9223 --remote-debugging-address=127.0.0.1
-Fully exit NetEase before reopening it. For a taskbar shortcut, right-click the icon, then right-click the app name to open Properties. Client updates or repinning can remove the arguments.
+Desktop settings
+Login startup also enables recovery after an unexpected background exit. Turning it off does not interrupt the current connection. Before installation, Not Installed is a disabled indicator; start from Get Started on the home page. After installation, Reinstall Background repairs the installation.
+Diagnostic Logs opens the local logs folder. Check Updates opens the download page. Lyrics are fetched online automatically; no local lyric setup is required in the UI.
+
+Upgrading
+Extract the new PC package, open its PassportMusicControl.exe and click Get Started to update the existing installation. Enable-Autostart.cmd remains available. The existing port setting, startup, pairing and files are retained. Use the desktop shortcut afterward.
+For the new device menu, a compatible existing partition layout supports PassportMusic-v23-app.bin at 0x10000 without chip erase, retaining settings and pairing. FoloToy-AI-Passport-full.bin starts at 0x0 and may reset both. Never write app-only at 0x0. If unsure, use the community full flash and pair again.
 
 Troubleshooting
-After a successful connection, the next retry starts with a two-second delay. Consecutive failures increase it up to 15 seconds. During the same background session, the bridge remembers the connected Passport and ends scanning as soon as that device is found. The first scan after starting the bridge takes about eight seconds and requires a target selection if multiple devices are found.
-- No volume/progress control: fully exit NetEase and reopen it with Open-NetEase-Remote.cmd.
-- No connection: keep the device on and PC Bluetooth enabled. The bridge retries; reconnection after flashing can take time. Background-Status.cmd checks status, Stop-Background.cmd stops the bridge and Disable-Autostart.cmd disables logon startup.
-- No lyrics: check internet access and try another song. You can also place a UTF-8 timed title - artist.lrc file in the bridge's lyrics folder and restart it; replace Windows-invalid filename characters with underscores.
+- No device: keep Passport and PC Bluetooth on. Complete initial pairing; retries are automatic. Reconnect Device starts a fresh attempt.
+- No internal volume/progress: reopen NetEase from the control center and follow any restart prompt.
+- Lyric error: check internet access. The bridge retries; try another song. Some songs have no available online lyrics.
+- Control port occupied/reserved: the default remains 9223, independent of the FlClash proxy port. Save an available port in Settings and reopen NetEase. Existing desktop/taskbar player shortcuts must use that same port; Copy Startup Arguments helps. Working installations need no port change.
+- Original player shortcuts: append --remote-debugging-port=9223 --remote-debugging-address=127.0.0.1 outside the path quotes, substituting a custom port when used. Client updates or repinning may remove arguments.
 
-If the control port is unavailable (most users need no change)
-The default control port remains 9223 and is independent of the FlClash proxy port. If volume and progress still fail after reopening NetEase with the launcher, and Windows reserves 9223 or another application occupies it:
-1. Choose a free, unreserved port, for example 19223. Both the bridge and NetEase must use the same number.
-2. Create desktop-port.txt beside PassportMusic.exe containing only that number. In Notepad, save as All Files so the name does not become desktop-port.txt.txt.
-3. Run Stop-Background.cmd, then Enable-Autostart.cmd. Fully exit NetEase and run Open-NetEase-Remote.cmd again.
-4. For an existing desktop/taskbar shortcut, change --remote-debugging-port=9223 to the same number, such as --remote-debugging-port=19223.
-The background bridge, launcher and status check share this file. An explicit --desktop-port overrides it for one command. With no file, the port remains 9223. The public package includes no personal port configuration; upgrades retain an existing file in the installed folder.
-
-To upgrade an existing installation, extract the new bridge package to a new folder and run its Enable-Autostart.cmd. Stop-Background.cmd pauses the bridge until the next login or manual re-enable. Disable-Autostart.cmd turns off logon startup and removes the recovery task. This bridge update works with your existing firmware and Bluetooth pairing.
-
-Tested with NetEase 3.1.31.205174. Other or future versions may require adaptation. Chinese/Latin, Japanese kana and modern Korean are supported; menus remain Chinese. Other scripts and emoji may not render. Images are current-interface renders with demonstration song and lyric text.
+Tested with NetEase 3.1.31.205174; other/future versions may need adaptation. Menus are Chinese. Chinese/Latin, Japanese kana and modern Korean are supported; other scripts and emoji may not render. Public firmware shows raw battery readings with no personal scaling. The PC package defaults to 9223 and contains no personal port file. Song content in illustrations is demonstration text; PC images are local application screenshots.

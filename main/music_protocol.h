@@ -15,6 +15,8 @@ typedef struct {
     bool connected, available, playing;
     int lyric_offset_ms, offset_ack;
     bool settings_page, settings_edit, offset_supported;
+    bool settings_submenu;
+    int settings_group, settings_index;
     music_setting_t setting;
     int brightness, screen_seconds;
     music_pet_t pet;

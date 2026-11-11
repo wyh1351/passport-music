@@ -13,7 +13,7 @@ from background_task import owns_task,task_definition
 class BackgroundTests(unittest.TestCase):
     def test_management_uses_registered_custom_install_location(self):
         root=Path.cwd()/'custom install'
-        with patch('background_music.registered',return_value=run_command(root)):
+        with patch('background_music.persisted_root',return_value=None),patch('background_music.registered',return_value=run_command(root)):
             self.assertEqual(install_root(),root)
 
     def test_bridge_output_supports_utf8_and_windows_code_page(self):
