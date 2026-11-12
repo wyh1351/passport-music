@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -11,6 +12,15 @@ from background_music import run_command,set_autostart,stop,decode_bridge_line,i
 from background_task import owns_task,task_definition
 
 class BackgroundTests(unittest.TestCase):
+    def test_quiet_install_failure_produces_actionable_receipt(self):
+        from background_music import main
+        with tempfile.TemporaryDirectory() as directory:
+            receipt=Path(directory)/'result.json'
+            with patch.object(sys,'argv',['background_music','--install','--quiet','--result-file',str(receipt)]),patch('background_music.install',side_effect=PermissionError('runtime file is locked')),patch('background_music.setup_logger'):
+                with self.assertRaises(SystemExit) as result:main()
+            self.assertEqual(result.exception.code,1)
+            self.assertEqual(json.loads(receipt.read_text(encoding='utf-8')),dict(ok=False,error='runtime file is locked'))
+
     def test_management_uses_registered_custom_install_location(self):
         root=Path.cwd()/'custom install'
         with patch('background_music.persisted_root',return_value=None),patch('background_music.registered',return_value=run_command(root)):

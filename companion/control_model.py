@@ -5,7 +5,7 @@ from pathlib import Path
 import socket
 import time
 
-VERSION = 'v1.3.0'
+VERSION = 'v1.3.1'
 STATUS_FILE = 'bridge-status.json'
 
 
@@ -25,6 +25,29 @@ def read_json(path):
         return value if isinstance(value, dict) else {}
     except (OSError, ValueError):
         return {}
+
+
+def window_placement(saved, work_areas):
+    """Center a first window; constrain saved client bounds to a current monitor."""
+    areas = [tuple(area) for area in work_areas if len(area) == 4
+             and area[2] > area[0] and area[3] > area[1]]
+    if not areas: raise ValueError('No usable monitor work area')
+    valid = all(type(saved.get(key)) is int for key in ('x','y','width','height'))
+    valid = valid and saved['width'] >= 320 and saved['height'] >= 240
+    area = areas[0]
+    if valid:
+        def overlap(rect):
+            return (max(0, min(saved['x']+saved['width'],rect[2])-max(saved['x'],rect[0]))
+                    * max(0,min(saved['y']+saved['height'],rect[3])-max(saved['y'],rect[1])))
+        candidate = max(areas,key=overlap)
+        if overlap(candidate) >= saved['width']*saved['height']//4: area = candidate
+        else: valid = False  # The old display was unplugged; center on the current one.
+    left,top,right,bottom=area
+    width=min(max(1000,saved['width'] if valid else 1080),max(320,right-left-24))
+    height=min(max(730,saved['height'] if valid else 760),max(240,bottom-top-48))
+    x=min(max(saved['x'],left),right-width-16) if valid else left+(right-left-width)//2
+    y=min(max(saved['y'],top),bottom-height-40) if valid else top+(bottom-top-height-32)//2
+    return dict(x=x,y=y,width=width,height=height)
 
 
 class BridgeStatus:

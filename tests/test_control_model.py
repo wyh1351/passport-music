@@ -5,10 +5,32 @@ import tempfile
 import unittest
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'companion'))
-from control_model import BridgeStatus, read_json, status_view, save_port, port_available, installation_present
+from control_model import BridgeStatus, read_json, status_view, save_port, port_available, installation_present, window_placement
 
 
 class ControlModelTests(unittest.TestCase):
+    def test_first_window_is_centered_in_work_area(self):
+        result=window_placement({},[(0,0,1920,1040)])
+        self.assertEqual(result,dict(x=420,y=124,width=1080,height=760))
+
+    def test_saved_position_on_negative_monitor_is_retained(self):
+        saved=dict(x=-1600,y=150,width=1100,height=780)
+        self.assertEqual(window_placement(saved,[(0,0,1920,1040),(-1920,0,0,1040)]),saved)
+
+    def test_disconnected_monitor_recenters_and_small_display_fits(self):
+        saved=dict(x=-1600,y=150,width=1800,height=1000)
+        result=window_placement(saved,[(0,0,1024,720)])
+        self.assertGreater(result['x'],0);self.assertGreaterEqual(result['y'],0)
+        self.assertLess(result['x']+result['width'],1024)
+        self.assertLess(result['y']+result['height']+32,720)
+        result=window_placement(dict(x=1800,y=900,width=1200,height=900),[(0,0,1920,1040)])
+        self.assertLess(result['x']+result['width'],1920)
+        self.assertLess(result['y']+result['height'],1040)
+
+    def test_malformed_window_preferences_use_default(self):
+        for saved in ({'x':True},dict(x=0,y=0,width='bad',height=10),dict(x=0,y=0,width=-1,height=700)):
+            self.assertEqual(window_placement(saved,[(0,0,1920,1040)])['x'],420)
+
     def test_installed_state_does_not_depend_on_login_startup(self):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder)

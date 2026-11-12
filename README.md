@@ -25,7 +25,7 @@ Current interface render with sample song and lyrics.
 
 Use the desktop shortcut or tray icon afterward. Closing the window keeps the bridge running.
 
-[Control center and firmware v1.3.0](https://github.com/wyh1351/passport-music/releases/tag/v1.3.0) · [Full instructions](docs/netease-music.md)
+[Control center and firmware v1.3.1](https://github.com/wyh1351/passport-music/releases/tag/v1.3.1) · [Full instructions](docs/netease-music.md)
 
 ## Controls
 

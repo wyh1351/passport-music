@@ -288,6 +288,7 @@ def main():
     parser.add_argument('--no-start', action='store_true')
     parser.add_argument('--recover', action='store_true')
     parser.add_argument('--install-dir', type=Path)
+    parser.add_argument('--result-file', type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args()
     try:
         if args.background:
@@ -297,6 +298,9 @@ def main():
             return
         if args.install:
             root = install(own_root(), not args.no_start, args.install_dir)
+            if args.result_file:
+                from control_model import atomic_json
+                atomic_json(args.result_file,dict(ok=True,directory=str(root)))
             message = '已启用登录自启和后台恢复。直接打开已配置的网易云即可。\n安装目录：'+str(root)
         elif args.disable:
             root = install_root(); set_autostart(root, False); request_stop(root)
@@ -322,6 +326,11 @@ def main():
                 message += '\n网易云接口检查未完成，请查看日志。'
         if not args.quiet: notify(message)
     except Exception as exc:
+        if args.install:
+            setup_logger(own_root()).exception('Background installation failed')
+            if args.result_file:
+                from control_model import atomic_json
+                atomic_json(args.result_file,dict(ok=False,error=str(exc)))
         if not args.quiet and not args.background:
             notify('操作失败：'+str(exc), True)
         raise SystemExit(1)

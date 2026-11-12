@@ -25,7 +25,7 @@
 
 以后从桌面快捷方式或托盘打开控制器；关闭窗口仍在后台运行。
 
-[电脑控制器与固件 v1.3.0](https://github.com/wyh1351/passport-music/releases/tag/v1.3.0) · [完整使用说明](docs/netease-music.zh_CN.md)
+[电脑控制器与固件 v1.3.1](https://github.com/wyh1351/passport-music/releases/tag/v1.3.1) · [完整使用说明](docs/netease-music.zh_CN.md)
 
 ## 按键
 

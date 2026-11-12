@@ -13,30 +13,37 @@ from tkinter import ttk, messagebox
 import webbrowser
 
 from background_music import own_root, install_root, request_stop, spawn, registered, run_command
-from control_model import VERSION, atomic_json, read_json, installation_present
+from control_model import VERSION, atomic_json, read_json, installation_present, window_placement
 from control_widgets import Button, Pages, card, BG
 from control_brand import app_image, configure_windows_dpi
-from control_service import collect_status, restart_bridge, change_port, enable_startup, open_player, install_package
+from control_service import (collect_status, restart_bridge, change_port, enable_startup, open_player,
+                             install_package, monitor_work_areas, position_window, window_position)
 
 TITLE = 'Passport Music · 音乐遥控器'
 WHITE, INK, MUTED, RED, LINE = '#FFFFFF', '#191B1F', '#616876', '#E4002B', '#DFE2E7'
 
 
 class Center:
-    def __init__(self, directory, tray_only=False):
+    def __init__(self, directory, tray_only=False, installation_complete=False):
         self.directory = Path(directory)
         self.app = tk.Tk()
+        self.app.withdraw()
         from PIL import ImageTk
         self.window_icon=ImageTk.PhotoImage(app_image(64),master=self.app)
         self.app.iconphoto(True,self.window_icon)
         self.app.title(TITLE)
-        self.app.geometry('1080x760')
-        self.app.minsize(1000, 730)
+        self.window_file=self.directory/'control-window-state.json'
+        self.placement=window_placement(read_json(self.window_file),monitor_work_areas())
+        self.app.geometry(f"{self.placement['width']}x{self.placement['height']}")
+        self.app.minsize(min(1000,self.placement['width']),min(730,self.placement['height']))
+        self.window_save=None
+        self.placed=False
         self.app.configure(bg=BG)
         self.app.protocol('WM_DELETE_WINDOW', self.hide)
         self.app.bind('<Escape>', lambda _: self.hide())
         self.messages = queue.Queue()
         self.busy = False
+        self.installing = False
         self.checking = False
         self.state = {}
         self.closing = False
@@ -46,11 +53,30 @@ class Center:
         self.make_style()
         self.make_window()
         self.make_tray()
+        self.app.bind('<Configure>',self.window_changed,add='+')
+        self.app.after(0,lambda:self.place_initial_window(tray_only))
         atomic_json(self.directory/'control-state.json', {'pid': os.getpid()})
         (self.directory/'control-close-request').unlink(missing_ok=True)
         self.app.after(100, self.poll)
         self.app.after(200, self.refresh)
-        if tray_only: self.app.withdraw()
+        if installation_complete:self.app.after(700,self.installation_succeeded)
+
+    def place_initial_window(self,tray_only):
+        self.app.update_idletasks()
+        position_window(self.app,self.placement['x'],self.placement['y'])
+        self.placed=True
+        if not tray_only:self.app.deiconify()
+
+    def window_changed(self,event):
+        if event.widget!=self.app or not self.placed or self.closing:return
+        if self.window_save:self.app.after_cancel(self.window_save)
+        self.window_save=self.app.after(700,self.save_window)
+
+    def save_window(self):
+        self.window_save=None
+        if self.placed and self.app.state()=='normal':
+            try:atomic_json(self.window_file,window_position(self.app))
+            except OSError:pass
 
     def make_style(self):
         self.app.option_add('*Font', ('Microsoft YaHei UI', 10))
@@ -132,6 +158,8 @@ class Center:
         self.label(startup,'启用后，后台异常退出也会自动恢复。',9,MUTED).pack(fill='x',pady=(6,14))
         row=tk.Frame(startup,bg=WHITE);row.pack(fill='x')
         self.install_button=Button(row,text='安装 / 更新后台',command=self.install);self.install_button.pack(side='right')
+        self.install_status=self.label(startup,'',9,MUTED,wraplength=660)
+        self.install_status.pack(fill='x',pady=(10,0))
         ports=card(self.settings)
         self.label(ports,'网易云控制端口',13,bold=True).pack(fill='x')
         self.label(ports,'通常不用修改。仅在端口被占用或被 Windows 保留时更换。',9,MUTED,wraplength=670).pack(fill='x',pady=(8,15))
@@ -214,7 +242,8 @@ class Center:
                 self.connect_button.configure(text='重新连接设备' if value['running'] else '开始连接')
                 if not self.busy:self.auto.set(value['autostart'])
                 self.auto_button.configure(state='normal' if self.installed else 'disabled')
-                self.install_button.configure(text='重新安装后台' if self.installed else '未安装后台',state='normal' if self.installed else 'disabled')
+                self.install_button.configure(text='正在重新安装…' if self.installing else '重新安装后台' if self.installed else '未安装后台',
+                    state='normal' if self.installed and not self.installing else 'disabled')
                 if not self.port_dirty and self.app.focus_get()!=self.port_input:self.port.set(str(value['port']))
                 if self.tray:self.tray.title='Passport Music · '+value['heading'][:50]
             elif kind=='check_failed':
@@ -227,6 +256,9 @@ class Center:
                 self.refresh()
             elif kind=='error':
                 self.busy=False;self.activity.configure(text='操作未完成')
+                if self.installing:
+                    self.installing=False
+                    self.install_status.configure(text='安装未完成：'+value,fg='#B42318')
                 messagebox.showerror('操作未完成',value,parent=self.app);self.refresh()
         request=read_json(self.directory/'control-open-request.json').get('at',0)
         if type(request) in (int,float) and request>self.seen_open:
@@ -275,19 +307,32 @@ class Center:
         messagebox.showinfo('已复制','在网易云快捷方式的“目标”末尾替换原遥控参数，保留原程序路径。',parent=self.app)
 
     def install(self):
-        def done(_):
-            destination=install_root()
+        if self.busy:return
+        self.installing=True
+        self.install_button.configure(text='正在重新安装…' if self.installed else '正在安装…',state='disabled')
+        self.install_status.configure(text='正在检查文件、重新安装并启动后台，请稍候…',fg=MUTED)
+        def done(destination):
+            self.installing=False
             if destination.resolve()!=self.directory.resolve():
                 self.quit_ui()
-                subprocess.Popen([str(destination/'PassportMusicControl.exe')],cwd=destination,creationflags=subprocess.CREATE_NO_WINDOW)
-            else:self.installed=True
+                subprocess.Popen([str(destination/'PassportMusicControl.exe'),'--installation-complete'],cwd=destination,creationflags=subprocess.CREATE_NO_WINDOW)
+            else:self.installation_succeeded()
         self.worker('正在安装后台…',lambda:install_package(self.directory),done)
+
+    def installation_succeeded(self):
+        self.installed=True
+        self.install_status.configure(text='后台已安装并启动，设备会自动重新连接。',fg='#157347')
+        messagebox.showinfo('后台安装完成','后台已安装并启动。\n设备会自动重新连接，原端口配置和配对已保留。',parent=self.app)
+        self.refresh()
 
     def exit(self):
         self.worker('正在退出…',lambda:request_stop(self.directory),lambda _:self.quit_ui())
 
     def quit_ui(self):
+        self.save_window()
         self.closing=True
+        for callback in self.app.tk.splitlist(self.app.tk.call('after','info')):
+            self.app.after_cancel(callback)
         if self.tray:self.tray.stop()
         state=read_json(self.directory/'control-state.json')
         if state.get('pid')==os.getpid():(self.directory/'control-state.json').unlink(missing_ok=True)
@@ -302,6 +347,7 @@ def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--tray',action='store_true')
     parser.add_argument('--root',type=Path)
+    parser.add_argument('--installation-complete',action='store_true',help=argparse.SUPPRESS)
     args=parser.parse_args()
     root=args.root.resolve() if args.root else own_root()
     api=ctypes.WinDLL('kernel32',use_last_error=True)
@@ -309,13 +355,22 @@ def main():
     api.CloseHandle.argtypes=[ctypes.c_void_p]
     handle=api.CreateMutexW(None,False,r'Local\FoloToy.PassportMusic.ControlCenter')
     if not handle:raise ctypes.WinError(ctypes.get_last_error())
+    exists=ctypes.get_last_error()==183
+    # During installation handover the old source window may still be exiting.
+    # Wait for its mutex rather than silently losing the completion window.
+    deadline=time.monotonic()+8
+    while exists and args.installation_complete and time.monotonic()<deadline:
+        api.CloseHandle(handle);time.sleep(.1)
+        handle=api.CreateMutexW(None,False,r'Local\FoloToy.PassportMusic.ControlCenter')
+        if not handle:raise ctypes.WinError(ctypes.get_last_error())
+        exists=ctypes.get_last_error()==183
     try:
-        if ctypes.get_last_error()==183:
+        if exists:
             if not args.tray:
                 for directory in {root,install_root()}:
                     if directory.is_dir():atomic_json(directory/'control-open-request.json',{'at':time.time()})
             return
-        Center(root,args.tray).run()
+        Center(root,args.tray,args.installation_complete).run()
     finally:api.CloseHandle(handle)
 
 

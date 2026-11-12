@@ -6,10 +6,33 @@ import types
 import unittest
 from unittest.mock import patch,MagicMock,AsyncMock
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'companion'))
-from control_service import change_port, open_player, select_player_window, show_player
+from control_service import change_port, open_player, select_player_window, show_player, install_package
+import json
 
 
 class ControlServiceTests(unittest.TestCase):
+    def setUp(self):
+        flags=patch('control_service.subprocess.CREATE_NO_WINDOW',0,create=True)
+        flags.start();self.addCleanup(flags.stop)
+
+    def test_install_reports_specific_failure_from_quiet_launcher(self):
+        def fail(args,**kwargs):
+            Path(args[-1]).write_text(json.dumps(dict(ok=False,error='文件被占用，请关闭旧版后重试')),encoding='utf-8')
+            return types.SimpleNamespace(returncode=1)
+        with patch('control_service.subprocess.run',side_effect=fail):
+            with self.assertRaisesRegex(RuntimeError,'文件被占用'):install_package(Path('D:/Music'))
+
+    def test_install_does_not_claim_success_without_running_background(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            def success(args,**kwargs):
+                Path(args[-1]).write_text(json.dumps(dict(ok=True,directory=str(root))),encoding='utf-8')
+                return types.SimpleNamespace(returncode=0)
+            with patch('control_service.subprocess.run',side_effect=success),patch('control_service.installation_present',return_value=True),patch('control_service.owned_process',return_value=None):
+                with self.assertRaisesRegex(RuntimeError,'未保持运行'):install_package(root)
+            with patch('control_service.subprocess.run',side_effect=success),patch('control_service.installation_present',return_value=True),patch('control_service.owned_process',return_value=object()):
+                self.assertEqual(install_package(root),root)
+
     def test_hidden_tray_main_window_is_a_valid_restore_target(self):
         main=dict(handle=10,visible=False,owned=False,titled=True,width=1100,height=760)
         helpers=[dict(main,handle=11,visible=True,width=32,height=32),dict(main,handle=12,visible=True,owned=True)]

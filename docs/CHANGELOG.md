@@ -10,6 +10,13 @@
 > with `CHANGELOG.zh_CN.md`. The entries currently under `Unreleased` are pending
 > review for the next release; they are not a finalized release history.
 
+## Passport Music v1.3.1 (2026-11-12)
+
+- Show progress and prevent repeated clicks during background reinstallation. Confirm completion and display a specific failure reason.
+- Verify that the background is running before reporting a successful installation.
+- Center the first window on the current monitor, remember its size and position, and keep it visible after monitor changes.
+- PC-only update; device firmware remains v23. No reflashing is required.
+
 ## Passport Music v1.3.0 (2026-11-12)
 
 - Added a desktop control center for status, settings and help, with desktop shortcut and tray actions.

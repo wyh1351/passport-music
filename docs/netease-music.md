@@ -6,7 +6,7 @@ You need Windows 10/11, Bluetooth and the NetEase Cloud Music desktop app. No de
 
 First use
 1. Flash this play with the community flasher and keep Passport powered on.
-2. Download [Windows control center v1.3.0](https://github.com/wyh1351/passport-music/releases/download/v1.3.0/PassportMusic-Windows-v1.3.0.zip) and extract it. Keep all programs and support folders together.
+2. Download [Windows control center v1.3.1](https://github.com/wyh1351/passport-music/releases/download/v1.3.1/PassportMusic-Windows-v1.3.1.zip) and extract it. Keep all programs and support folders together.
 3. Open PassportMusicControl.exe and click Get Started on the home page. It installs the background bridge, creates the Passport Music desktop shortcut and enables login startup.
 4. Click Open NetEase and play a song. A running player is brought back even when hidden in the tray. If remote control requires restarting NetEase, the software asks first.
 5. Open Bluetooth Settings, add Passport Music and enter the six-digit code shown on the device. Pair once; the song, lyrics and progress appear after connection.
@@ -36,6 +36,7 @@ Changes save after about one idle second and survive restart. Settings footers s
 Desktop settings
 Login startup also enables recovery after an unexpected background exit. Turning it off does not interrupt the current connection. Before installation, Not Installed is a disabled indicator; start from Get Started on the home page. After installation, Reinstall Background repairs the installation.
 Diagnostic Logs opens the local logs folder. Check Updates opens the download page. Lyrics are fetched online automatically; no local lyric setup is required in the UI.
+During reinstallation, the button shows progress and is temporarily disabled. A completion dialog confirms that the background is running; failures show their reason. The window first opens centered on the current monitor, then remembers its size and position. It stays visible when monitors change.
 
 Upgrading
 Extract the new PC package, open its PassportMusicControl.exe and click Get Started to update the existing installation. Enable-Autostart.cmd remains available. The existing port setting, startup, pairing and files are retained. Use the desktop shortcut afterward.
